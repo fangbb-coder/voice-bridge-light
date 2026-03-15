@@ -9,6 +9,7 @@
 - 🤖 **语音助手** - 支持唤醒词、命令处理
 - 💬 **多平台支持** - Telegram、企业微信、钉钉、飞书、WhatsApp、QQ
 - 🚀 **轻量级** - 总模型大小约 160MB，适合边缘设备
+- ⚡ **自动处理** - 后台持续运行，自动接收和回复消息
 
 ## 使用方法
 
@@ -25,7 +26,7 @@ print(text)  # "你好"
 audio_file = tts("你好，我是语音助手", voice="zh_CN")
 print(audio_file)  # "temp/xxx.wav"
 
-# 处理语音消息
+# 处理语音消息（识别 + 回复）
 result = process_voice("audio.wav")
 print(result["recognized_text"])  # 识别的文本
 print(result["reply_text"])       # 回复文本
@@ -37,7 +38,23 @@ print(result["reply_text"])   # 回复文本
 print(result["reply_voice"])  # 回复语音文件
 ```
 
-### 方式 2：HTTP API 服务
+### 方式 2：启动适配器管理器（自动处理多平台消息）
+
+```bash
+# 启动所有适配器（后台持续运行）
+python start_adapters.py
+
+# 或使用适配器管理器 API
+python -c "from adapters.manager import start_adapters; start_adapters()"
+```
+
+适配器管理器功能：
+- 自动轮询所有启用的平台（Telegram/QQ/企业微信/钉钉/飞书/WhatsApp）
+- 收到语音消息：自动下载 → 语音识别 → 生成回复 → 语音合成 → 发送回复
+- 收到文本消息：生成回复 → 语音合成（可选）→ 发送回复
+- 后台持续运行，无需人工干预
+
+### 方式 3：HTTP API 服务
 
 如需 HTTP 服务，使用 main.py：
 
@@ -45,7 +62,7 @@ print(result["reply_voice"])  # 回复语音文件
 # 启动服务
 python main.py
 
-# 健康检查
+# 测试 API
 curl http://localhost:8000/health
 
 # 处理语音
@@ -80,22 +97,56 @@ curl -X POST http://localhost:8000/tts \
 编辑 `config.yaml`：
 
 ```yaml
+# 基础配置
 language: zh
 voice: female
 wake_word: "hey claw"
 auto_voice_reply: true
 
-# Whisper 配置
+# 模型配置
 whisper_model_size: base  # tiny/base/small
+piper_language: zh_CN     # zh_CN/en_US/en_US_low
 
-# Piper 配置
-piper_language: zh_CN  # zh_CN/en_US/en_US_low
-
-# 启用适配器
+# 适配器配置（启用需要的平台）
 adapters:
   telegram:
     enabled: true
     token: "YOUR_BOT_TOKEN"
+    poll_interval: 5  # 轮询间隔（秒）
+
+  qq:
+    enabled: true
+    token: "YOUR_BOT_TOKEN"
+    app_id: "YOUR_APP_ID"
+    webhook_secret: "YOUR_SECRET"
+
+  wecom:
+    enabled: false
+    token: null
+    app_id: "YOUR_CORP_ID"
+    app_secret: "YOUR_CORP_SECRET"
+    webhook_secret: "YOUR_WEBHOOK_TOKEN"
+
+  dingtalk:
+    enabled: false
+    token: null
+    app_id: "YOUR_APP_KEY"
+    app_secret: "YOUR_APP_SECRET"
+    webhook_secret: "YOUR_WEBHOOK_SECRET"
+
+  feishu:
+    enabled: false
+    token: null
+    app_id: "YOUR_APP_ID"
+    app_secret: "YOUR_APP_SECRET"
+    webhook_secret: "YOUR_ENCRYPT_KEY"
+
+  whatsapp:
+    enabled: false
+    token: "YOUR_ACCESS_TOKEN"
+    webhook_secret: "YOUR_APP_SECRET"
+    extra:
+      phone_number_id: "YOUR_PHONE_NUMBER_ID"
 ```
 
 ## 模型下载
@@ -147,6 +198,7 @@ python scripts/download_models.py piper_en
 - pydub
 - numpy
 - soundfile
+- requests
 
 可选：
 - torch（用于加速 Whisper）
@@ -167,6 +219,7 @@ python test_skill.py
 voice-bridge/
 ├── core.py                 # 核心功能（纯函数，无 HTTP）
 ├── main.py                 # HTTP API 服务入口
+├── start_adapters.py       # 启动适配器管理器
 ├── skill.yaml              # ClawHub 配置
 ├── requirements.txt        # 依赖
 ├── config.yaml             # 配置文件
@@ -178,8 +231,73 @@ voice-bridge/
 ├── assistant/
 │   └── voice_assistant.py  # 语音助手逻辑
 ├── adapters/               # 多平台适配器
+│   ├── manager.py          # 适配器管理器
+│   ├── base.py             # 适配器基类
+│   ├── telegram.py
+│   ├── qq.py
+│   ├── wecom.py
+│   ├── dingtalk.py
+│   ├── feishu.py
+│   └── whatsapp.py
 └── scripts/
     └── download_models.py  # 模型下载
+```
+
+## 适配器管理器架构
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    AdapterManager                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
+│  │  Telegram   │  │     QQ      │  │   WeCom     │     │
+│  │  Adapter    │  │  Adapter    │  │  Adapter    │     │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘     │
+│         │                │                │             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
+│  │  DingTalk   │  │   Feishu    │  │  WhatsApp   │     │
+│  │  Adapter    │  │  Adapter    │  │  Adapter    │     │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘     │
+│         └────────────────┴────────────────┘             │
+│                         │                               │
+│                         ▼                               │
+│              ┌─────────────────────┐                    │
+│              │   process_message   │                    │
+│              │   (语音/文本处理)    │                    │
+│              └─────────────────────┘                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 消息处理流程
+
+```
+用户发送语音消息
+       │
+       ▼
+┌──────────────┐
+│  适配器接收   │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│  下载语音文件 │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐    ┌──────────────┐
+│ Whisper ASR  │───▶│  识别文本     │
+└──────┬───────┘    └──────┬───────┘
+       │                   │
+       ▼                   ▼
+┌──────────────┐    ┌──────────────┐
+│ 生成回复文本  │    │ 语音合成 TTS  │
+└──────┬───────┘    └──────┬───────┘
+       │                   │
+       └─────────┬─────────┘
+                 ▼
+        ┌──────────────┐
+        │  发送回复     │
+        │ (文本+语音)   │
+        └──────────────┘
 ```
 
 ## 许可证
