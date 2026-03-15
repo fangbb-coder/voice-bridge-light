@@ -127,8 +127,9 @@ class PiperTTS:
                 wav_file.setframerate(22050)  # 采样率
 
                 # 合成音频
-                for audio_bytes in self.voice.synthesize_stream_raw(text):
-                    wav_file.writeframes(audio_bytes)
+                for audio_chunk in self.voice.synthesize(text):
+                    # audio_chunk 是 AudioChunk 对象，包含 PCM 数据
+                    wav_file.writeframes(audio_chunk.raw)
 
             logger.info(f"语音合成完成: {output_file}")
             return output_file
@@ -153,8 +154,8 @@ class PiperTTS:
 
         try:
             # 使用 Piper Python API 流式合成
-            for audio_bytes in self.voice.synthesize_stream_raw(text):
-                yield audio_bytes
+            for audio_chunk in self.voice.synthesize(text):
+                yield audio_chunk.raw
 
         except Exception as e:
             logger.error(f"流式合成失败: {e}")
