@@ -129,13 +129,14 @@ adapters:
 # 下载全部模型（约 160MB）
 python scripts/download_models.py all
 
+# 仅下载 Whisper ASR（74MB）
+python scripts/download_models.py whisper
+
 # 仅下载中文 TTS（60MB）
 python scripts/download_models.py piper_zh
 
 # 仅下载英文 TTS（25MB）
 python scripts/download_models.py piper_en
-
-# Whisper 首次使用时自动下载（74MB）
 ```
 
 ## 支持的语言

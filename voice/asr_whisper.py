@@ -48,10 +48,18 @@ class WhisperASR:
 
             logger.info(f"正在加载 Whisper 模型: {self.model_size}")
 
-            # 设置模型下载目录
-            os.environ["WHISPER_CACHE_DIR"] = str(self.model_dir)
+            # 检查本地模型文件
+            model_file = self.model_dir / f"{self.model_size}.pt"
 
-            self.model = whisper.load_model(self.model_size)
+            if model_file.exists():
+                # 使用本地模型文件
+                logger.info(f"使用本地模型: {model_file}")
+                self.model = whisper.load_model(str(model_file))
+            else:
+                # 从网络下载
+                logger.info(f"本地模型不存在，从网络下载: {self.model_size}")
+                os.environ["WHISPER_CACHE_DIR"] = str(self.model_dir)
+                self.model = whisper.load_model(self.model_size)
 
             logger.info(f"Whisper 模型加载完成: {self.model_size}")
             return True

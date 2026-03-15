@@ -16,9 +16,9 @@ MODELS = {
     "whisper": {
         "name": "whisper-base",
         "description": "Whisper Base ASR 模型 (74MB)",
-        "type": "whisper",
+        "url": "https://openaipublic.azureedge.net/main/whisper/models/ed3a0b6b1c0edf879ad9b11b1af5a0e6ab5db9205f891f668f8b0e6c6326e34e/base.pt",
         "size_mb": 74,
-        "install_cmd": "whisper --model base --help"
+        "extract_dir": "models/whisper"
     },
     "piper_zh": {
         "name": "zh_CN-huayan-medium",
@@ -128,25 +128,26 @@ def download_piper_model(model_key: str) -> bool:
     return True
 
 
-def setup_whisper() -> bool:
-    """设置 Whisper（自动下载模型）"""
-    print("\n" + "="*50)
-    print("设置 Whisper ASR")
-    print("="*50)
-    print("Whisper 模型会在首次使用时自动下载")
-    print("模型大小: base (74MB)")
-    print("模型缓存目录: models/whisper")
-
-    # 创建缓存目录
+def download_whisper_model() -> bool:
+    """下载 Whisper 模型"""
+    config = MODELS["whisper"]
     root = get_project_root()
-    whisper_dir = root / "models" / "whisper"
-    ensure_dir(whisper_dir)
 
-    # 设置环境变量
-    os.environ["WHISPER_CACHE_DIR"] = str(whisper_dir)
+    model_dir = root / config["extract_dir"]
+    ensure_dir(model_dir)
 
-    print("✅ Whisper 配置完成")
-    print("   首次运行时会自动下载模型")
+    model_path = model_dir / "base.pt"
+
+    # 检查是否已存在
+    if model_path.exists():
+        print(f"✅ {config['description']} 已存在")
+        return True
+
+    # 下载模型文件
+    if not download_file(config["url"], model_path, config["name"]):
+        return False
+
+    print(f"✅ {config['description']} 安装完成")
     return True
 
 
@@ -192,9 +193,9 @@ def main():
         if not download_piper_model("piper_en"):
             success = False
 
-    # 设置 Whisper
+    # 下载 Whisper 模型
     if args.model in ["whisper", "all"]:
-        if not setup_whisper():
+        if not download_whisper_model():
             success = False
 
     print("\n" + "="*50)
@@ -202,11 +203,11 @@ def main():
         print("✅ 所有模型准备完成！")
         print("="*50)
         print("\n模型信息:")
-        print("  - Whisper ASR: base (74MB), 首次运行时自动下载")
+        print("  - Whisper ASR: base (74MB)")
         print("  - Piper TTS 中文: huayan-medium (60MB)")
         print("  - Piper TTS 英文: lessac-low (25MB)")
         print("\n现在可以启动服务:")
-        print("  python main.py")
+        print("  python start_adapters.py")
         return 0
     else:
         print("❌ 部分模型下载失败")
