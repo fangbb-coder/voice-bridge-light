@@ -198,7 +198,6 @@ python test_skill.py
 ```
 voice-bridge/
 ├── core.py                 # 核心功能（纯函数，无 HTTP）
-├── main.py                 # HTTP API 服务入口
 ├── start_adapters.py       # 启动适配器管理器
 ├── skill.yaml              # ClawHub 配置
 ├── requirements.txt        # 依赖
