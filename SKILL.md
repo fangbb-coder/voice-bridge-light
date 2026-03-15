@@ -15,7 +15,17 @@
 
 ## 使用方法
 
-### 方式 1：纯函数调用（推荐，无 HTTP 服务）
+> **💡 OpenClaw 集成建议**
+> 
+> **推荐：纯函数调用**（性能更好、更简单）
+> ```python
+> from core import text_to_speech, speech_to_text, process_text
+> result = text_to_speech("你好")
+> ```
+> 
+> **备选：HTTP API**（仅当 OpenClaw 无法直接调用 Python 函数时使用）
+
+### 方式 1：纯函数调用（⭐ 推荐，无 HTTP 服务）
 
 ```python
 from core import stt, tts, process_voice, process_text
@@ -40,7 +50,7 @@ print(result["reply_text"])   # 回复文本
 print(result["reply_voice"])  # 回复语音文件
 ```
 
-### 方式 2：HTTP API 服务（供 OpenClaw 等平台调用）
+### 方式 2：HTTP API 服务（备选，供无法直接调用 Python 函数的场景）
 
 启动 Flask HTTP 服务：
 
@@ -63,7 +73,7 @@ API 端点：
 | `/process/text` | POST | 处理文本消息 | `{"text": "你好", "reply_with_voice": true}` |
 | `/process/voice` | POST | 处理语音消息 | `audio=file&language=zh` |
 
-OpenClaw 配置示例：
+**OpenClaw HTTP 配置示例**（仅当无法使用纯函数调用时）：
 
 ```json
 {
@@ -81,6 +91,8 @@ OpenClaw 配置示例：
   }
 }
 ```
+
+**注意**：如果 OpenClaw 支持直接调用 Python 函数，建议优先使用方式 1（纯函数调用），避免 HTTP 服务的网络开销和进程管理复杂度。
 
 ### 方式 3：启动适配器管理器（自动处理多平台消息）
 
