@@ -261,8 +261,8 @@ config:
     description: QQ Bot Token
     secret: true
 
-# 注意：此 Skill 使用纯函数调用，无需 HTTP 端口
-# 如需 HTTP 服务，请使用 main.py 入口
+# 注意：此 Skill 使用纯函数调用，无需 HTTP 端口配置
+# 启动后会自动在后台运行适配器管理器，轮询处理各平台消息
 
 # 安装脚本
 install: |

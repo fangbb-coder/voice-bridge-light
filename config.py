@@ -60,8 +60,8 @@ class Config:
     auto_voice_reply: bool = True
 
     # 模型路径
-    asr_model_dir: str = "models/sherpa-onnx-sense-voice"
-    tts_model_dir: str = "models/kokoro"
+    asr_model_dir: str = "models/whisper"
+    tts_model_dir: str = "models/piper"
 
     # 临时文件
     temp_dir: str = "temp"
