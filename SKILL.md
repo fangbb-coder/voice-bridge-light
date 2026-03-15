@@ -100,35 +100,27 @@ adapters:
     enabled: true
     token: "YOUR_BOT_TOKEN"
     app_id: "YOUR_APP_ID"
-    webhook_secret: "YOUR_SECRET"
 
   wecom:
     enabled: false
-    token: null
-    app_id: "YOUR_CORP_ID"
-    app_secret: "YOUR_CORP_SECRET"
-    webhook_secret: "YOUR_WEBHOOK_TOKEN"
+    corp_id: "YOUR_CORP_ID"
+    corp_secret: "YOUR_CORP_SECRET"
+    agent_id: "YOUR_AGENT_ID"
 
   dingtalk:
     enabled: false
-    token: null
-    app_id: "YOUR_APP_KEY"
+    app_key: "YOUR_APP_KEY"
     app_secret: "YOUR_APP_SECRET"
-    webhook_secret: "YOUR_WEBHOOK_SECRET"
 
   feishu:
     enabled: false
-    token: null
     app_id: "YOUR_APP_ID"
     app_secret: "YOUR_APP_SECRET"
-    webhook_secret: "YOUR_ENCRYPT_KEY"
 
   whatsapp:
     enabled: false
-    token: "YOUR_ACCESS_TOKEN"
-    webhook_secret: "YOUR_APP_SECRET"
-    extra:
-      phone_number_id: "YOUR_PHONE_NUMBER_ID"
+    phone_number_id: "YOUR_PHONE_NUMBER_ID"
+    access_token: "YOUR_ACCESS_TOKEN"
 ```
 
 ## 模型下载
@@ -149,7 +141,7 @@ python scripts/download_models.py piper_en
 ## 支持的语言
 
 ### Whisper ASR
-- 中文 (zh)
+- 中文 (zh) - 支持自动繁体转简体
 - 英文 (en)
 - 日语 (ja)
 - 韩语 (ko)
@@ -213,7 +205,7 @@ sudo systemctl status voice-bridge
 
 ```bash
 # 原 edge-tts 调用方式
-python edge_tts_speak.py "你好" -o output.wav -v xiaoxiao
+python scripts/edge_tts_speak.py "你好" -o output.wav -v xiaoxiao
 
 # 实际调用 Voice Bridge Piper
 # 支持语音映射：xiaoxiao → zh_CN, en → en_US
@@ -282,73 +274,6 @@ voice-bridge/
 │              │   (语音/文本处理)    │                    │
 │              └─────────────────────┘                    │
 └─────────────────────────────────────────────────────────┘
-```
-
-## 消息处理流程
-
-### 语音消息处理流程
-
-```
-用户发送语音消息
-       │
-       ▼
-┌──────────────┐
-│  适配器接收   │
-└──────┬───────┘
-       │
-       ▼
-┌──────────────┐
-│  下载语音文件 │
-└──────┬───────┘
-       │
-       ▼
-┌──────────────┐    ┌──────────────┐
-│ Whisper ASR  │───▶│  识别文本     │
-└──────┬───────┘    └──────┬───────┘
-       │                   │
-       ▼                   ▼
-┌──────────────┐    ┌──────────────┐
-│ 生成回复文本  │    │ 语音合成 TTS  │
-└──────┬───────┘    └──────┬───────┘
-       │                   │
-       │    ┌─────────┐    │
-       └───▶│ 配置决定 │◀───┘
-            │ 回复方式 │
-            └────┬────┘
-                 │
-       ┌─────────┼─────────┐
-       │         │         │
-       ▼         ▼         ▼
-  ┌────────┐ ┌────────┐ ┌────────┐
-  │ 文本回复 │ │ 语音回复 │ │ 两者都发 │
-  │(识别+回复)│ │        │ │        │
-  └────────┘ └────────┘ └────────┘
-```
-
-### 回复模式配置
-
-| 配置项 | 可选值 | 说明 |
-|--------|--------|------|
-| `voice_reply_mode` | `auto` | 语音消息用语音回复（默认） |
-|                  | `text_only` | 仅文本回复 |
-|                  | `voice_only` | 仅语音回复 |
-|                  | `text_and_voice` | 文本+语音回复 |
-| `text_reply_mode` | `text_only` | 仅文本回复（默认） |
-|                 | `voice_only` | 仅语音回复 |
-|                 | `text_and_voice` | 文本+语音回复 |
-| `include_recognized_text` | `true` | 回复包含识别文本（默认） |
-|                         | `false` | 仅回复，不包含识别文本 |
-
-### 配置示例
-
-```yaml
-reply:
-  # 语音消息：用语音回复，同时显示识别文本
-  voice_reply_mode: "auto"
-  include_recognized_text: true
-
-  # 文本消息：仅文本回复
-  text_reply_mode: "text_only"
 ```
 
 ## 许可证
