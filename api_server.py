@@ -130,6 +130,70 @@ def stt_endpoint():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route('/audio/transcriptions', methods=['POST'])
+def transcribe_openai():
+    """
+    OpenAI 兼容的语音转文本接口
+    
+    OpenClaw QQBot 使用此接口格式
+    
+    Form 参数:
+    - file: 音频文件 (OpenAI 标准参数名)
+    - audio: 音频文件 (兼容参数名)
+    - language: 语言代码 (可选)
+    """
+    try:
+        # 获取音频文件（支持多种参数名）
+        audio_file = None
+        if 'file' in request.files:
+            audio_file = request.files['file']
+        elif 'audio' in request.files:
+            audio_file = request.files['audio']
+        
+        if not audio_file:
+            logger.error("缺少音频文件")
+            return jsonify({"error": "No audio file provided"}), 400
+        
+        language = request.form.get('language', 'zh')
+        
+        # 保存临时文件
+        suffix = Path(audio_file.filename).suffix or ".wav"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            audio_file.save(tmp)
+            tmp_path = tmp.name
+        
+        try:
+            # 调用 STT
+            logger.info(f"识别音频: {tmp_path}")
+            result = speech_to_text(tmp_path, language)
+            
+            if result.get('success') and result.get('text'):
+                text = result['text']
+                logger.info(f"识别结果: {text}")
+                
+                # OpenAI 兼容响应格式
+                return jsonify({
+                    "text": text,
+                    "task": "transcribe",
+                    "language": language,
+                    "duration": 0,
+                    "words": []
+                })
+            else:
+                error_msg = result.get('error', 'Transcription failed')
+                logger.error(f"识别失败: {error_msg}")
+                return jsonify({"error": error_msg}), 500
+                
+        finally:
+            # 清理临时文件
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+                
+    except Exception as e:
+        logger.error(f"识别失败: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/process/text', methods=['POST'])
 def process_text_endpoint():
     """
