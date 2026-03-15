@@ -6,7 +6,7 @@ import time
 import json
 import hashlib
 import requests
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 
 from adapters.base import BaseAdapter, Message, User
@@ -289,3 +289,28 @@ class FeishuAdapter(BaseAdapter):
     def get_user_info(self, user_id: str) -> Optional[dict]:
         """获取用户信息"""
         return self._make_request("GET", f"/contact/v3/users/{user_id}")
+
+    def get_messages(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        获取消息（飞书使用事件订阅模式，这里返回空列表）
+
+        Args:
+            limit: 最大数量
+
+        Returns:
+            消息列表
+        """
+        # 飞书使用事件订阅/Webhook，不支持主动拉取
+        return []
+
+    def parse_message(self, data: Dict[str, Any]) -> Optional[Message]:
+        """
+        解析消息数据
+
+        Args:
+            data: 消息数据
+
+        Returns:
+            Message 对象
+        """
+        return self.parse_webhook(data)

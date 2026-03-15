@@ -282,8 +282,13 @@ install: |
   echo "  - Piper TTS (中文): ~60MB"
   echo "  - Piper TTS (英文): ~25MB"
 
-# 启动脚本 - 初始化核心模块（无 HTTP 服务）
+# 启动脚本 - 启动适配器管理器（后台轮询所有平台消息）
 start: |
-  python core.py
-  echo "Voice Bridge 核心模块已初始化"
-  echo "可用函数: stt(), tts(), process_voice(), process_text()"
+  echo "启动 Voice Bridge 适配器管理器..."
+  nohup python -c "
+from adapters.manager import start_adapters
+start_adapters()
+" > /tmp/voice-bridge.log 2>&1 &
+  echo $! > /tmp/voice-bridge.pid
+  echo "Voice Bridge 适配器已后台启动"
+  echo "日志: tail -f /tmp/voice-bridge.log"

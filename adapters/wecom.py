@@ -7,7 +7,7 @@ import time
 import json
 import hashlib
 import requests
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 
 from adapters.base import BaseAdapter, Message, User
@@ -330,3 +330,28 @@ class WeComAdapter(BaseAdapter):
             用户信息
         """
         return self._make_request("GET", "/user/get", params={"userid": user_id})
+
+    def get_messages(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        获取消息（企业微信使用回调模式，这里返回空列表）
+
+        Args:
+            limit: 最大数量
+
+        Returns:
+            消息列表
+        """
+        # 企业微信使用 Webhook 回调，不支持主动拉取
+        return []
+
+    def parse_message(self, data: Dict[str, Any]) -> Optional[Message]:
+        """
+        解析消息数据
+
+        Args:
+            data: 消息数据
+
+        Returns:
+            Message 对象
+        """
+        return self.parse_webhook(data)

@@ -4,7 +4,7 @@ Telegram 适配器
 
 import os
 import requests
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 
 from adapters.base import BaseAdapter, Message, User
@@ -271,3 +271,35 @@ class TelegramAdapter(BaseAdapter):
     def get_me(self) -> Optional[dict]:
         """获取 Bot 信息"""
         return self._make_request("getMe")
+
+    def get_updates(self, offset: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        获取消息更新（轮询方式）
+
+        Args:
+            offset: 更新 ID 偏移量
+            limit: 最大获取数量
+
+        Returns:
+            更新列表
+        """
+        try:
+            result = self._make_request("getUpdates", offset=offset, limit=limit)
+            if result:
+                return result
+            return []
+        except Exception as e:
+            logger.error(f"获取更新失败: {e}")
+            return []
+
+    def parse_message(self, data: Dict[str, Any]) -> Optional[Message]:
+        """
+        解析消息数据
+
+        Args:
+            data: 消息数据（来自 get_updates）
+
+        Returns:
+            Message 对象
+        """
+        return self.parse_webhook(data)

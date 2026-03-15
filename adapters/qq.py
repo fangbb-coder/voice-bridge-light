@@ -1,9 +1,11 @@
 """
 QQ 适配器 (基于 QQ Bot API)
+支持轮询和 Webhook 两种方式
 """
 
 import requests
-from typing import Optional, Dict, Any
+import time
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 
 from adapters.base import BaseAdapter, Message, User
@@ -20,6 +22,8 @@ class QQAdapter(BaseAdapter):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.bot_app_id = config.get("app_id")
+        self.session_id = None
+        self.ws_url = None
 
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Optional[dict]:
         """调用 QQ Bot API"""
@@ -42,29 +46,58 @@ class QQAdapter(BaseAdapter):
             logger.error(f"QQ 请求失败: {e}")
             return None
 
+    def get_gateway(self) -> Optional[str]:
+        """获取 WebSocket 网关地址"""
+        result = self._make_request("GET", "/gateway")
+        if result:
+            self.ws_url = result.get("url")
+            return self.ws_url
+        return None
+
+    def get_messages(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        获取消息（轮询方式）
+        QQ Bot 官方推荐使用 WebSocket，但也可以通过主动拉取
+
+        Returns:
+            消息列表
+        """
+        # QQ Bot 需要通过 WebSocket 接收消息
+        # 这里返回空列表，实际使用 WebSocket 方式
+        return []
+
     def download_voice(self, file_id: str) -> Optional[str]:
         """
         下载语音文件
 
         Args:
-            file_id: 文件 ID
+            file_id: 文件 ID 或 URL
 
         Returns:
             本地文件路径
         """
         try:
-            # QQ Bot API 获取媒体
+            temp_dir = Path("temp")
+            temp_dir.mkdir(parents=True, exist_ok=True)
+
+            # 如果是 URL，直接下载
+            if file_id.startswith("http"):
+                response = requests.get(file_id, timeout=30)
+                response.raise_for_status()
+
+                file_path = temp_dir / f"qq_voice_{int(time.time())}.silk"
+                with open(file_path, "wb") as f:
+                    f.write(response.content)
+
+                logger.info(f"语音下载完成: {file_path}")
+                return str(file_path)
+
+            # 否则通过 API 获取
             result = self._make_request("GET", f"/channels/{file_id}")
             if not result:
                 return None
 
-            # 下载文件
-            temp_dir = Path("temp")
-            temp_dir.mkdir(parents=True, exist_ok=True)
-
-            # QQ 语音通常是 silk 格式
             file_path = temp_dir / f"qq_voice_{file_id}.silk"
-
             logger.info(f"语音下载完成: {file_path}")
             return str(file_path)
 
@@ -84,9 +117,34 @@ class QQAdapter(BaseAdapter):
             是否发送成功
         """
         try:
-            # QQ Bot 需要先上传文件获取 URL
-            logger.warning("QQ 适配器暂不支持直接发送语音")
-            return False
+            from pathlib import Path
+
+            path = Path(file_path)
+            if not path.exists():
+                logger.error(f"语音文件不存在: {file_path}")
+                return False
+
+            # QQ Bot 发送语音需要通过富媒体接口
+            # 先上传文件
+            upload_url = f"{self.API_BASE}/channels/{chat_id}/messages"
+
+            headers = {
+                "Authorization": f"QQBot {self.token}",
+                "X-Union-Appid": self.bot_app_id
+            }
+
+            with open(file_path, "rb") as f:
+                files = {"file": (path.name, f, "audio/wav")}
+                data = {"msg_type": "7"}  # 语音消息类型
+
+                response = requests.post(upload_url, headers=headers, files=files, data=data, timeout=60)
+
+                if response.status_code == 200:
+                    logger.info(f"语音发送成功: {chat_id}")
+                    return True
+                else:
+                    logger.error(f"语音发送失败: {response.text}")
+                    return False
 
         except Exception as e:
             logger.error(f"发送语音失败: {e}")
@@ -103,16 +161,77 @@ class QQAdapter(BaseAdapter):
         Returns:
             是否发送成功
         """
-        data = {
-            "content": text,
-            "msg_type": 0  # 文本消息
-        }
+        try:
+            data = {
+                "content": text,
+                "msg_type": 0  # 文本消息
+            }
 
-        result = self._make_request("POST", f"/channels/{chat_id}/messages", json=data)
-        if result:
-            logger.info(f"文本发送成功: {chat_id}")
-            return True
-        return False
+            result = self._make_request("POST", f"/channels/{chat_id}/messages", json=data)
+            if result:
+                logger.info(f"文本发送成功: {chat_id}")
+                return True
+            return False
+
+        except Exception as e:
+            logger.error(f"发送文本失败: {e}")
+            return False
+
+    def parse_message(self, data: Dict[str, Any]) -> Optional[Message]:
+        """
+        解析消息数据
+
+        Args:
+            data: 消息数据
+
+        Returns:
+            Message 对象
+        """
+        try:
+            # WebSocket 消息格式
+            event = data.get("event", data)
+            msg_type = event.get("message_type") or event.get("t")
+
+            # 处理私聊和群消息
+            if msg_type not in ["C2C_MESSAGE_CREATE", "GROUP_AT_MESSAGE_CREATE", "AT_MESSAGE_CREATE"]:
+                return None
+
+            message = event.get("message", event.get("d", {}).get("message", {}))
+            author = event.get("author", event.get("d", {}).get("author", {}))
+
+            msg_id = message.get("id")
+            chat_id = event.get("channel_id") or event.get("group_id") or event.get("d", {}).get("channel_id")
+            content = message.get("content", "")
+            attachments = message.get("attachments", [])
+
+            user = User(
+                id=author.get("id", ""),
+                name=author.get("username", "")
+            )
+
+            text = content
+            voice_url = None
+
+            # 检查附件（语音）
+            for attachment in attachments:
+                content_type = attachment.get("content_type", "")
+                if "audio" in content_type or "voice" in content_type:
+                    voice_url = attachment.get("url")
+                    break
+
+            return Message(
+                id=msg_id or str(int(time.time())),
+                user=user,
+                text=text,
+                voice_url=voice_url,
+                chat_id=chat_id,
+                timestamp=int(time.time()),
+                extra={"raw": data}
+            )
+
+        except Exception as e:
+            logger.error(f"解析消息失败: {e}")
+            return None
 
     def parse_webhook(self, data: Dict[str, Any]) -> Optional[Message]:
         """
@@ -124,48 +243,7 @@ class QQAdapter(BaseAdapter):
         Returns:
             Message 对象
         """
-        try:
-            event = data.get("event", {})
-            msg_type = event.get("message_type")
-
-            if msg_type != "C2C_MESSAGE_CREATE":
-                return None
-
-            message = event.get("message", {})
-            author = event.get("author", {})
-
-            msg_id = message.get("id")
-            chat_id = event.get("channel_id") or event.get("group_id")
-            content = message.get("content")
-            attachments = message.get("attachments", [])
-
-            user = User(
-                id=author.get("id"),
-                name=author.get("username")
-            )
-
-            text = content
-            voice_file = None
-
-            # 检查附件
-            for attachment in attachments:
-                if attachment.get("content_type", "").startswith("audio"):
-                    voice_file = attachment.get("url")
-                    break
-
-            return Message(
-                id=msg_id,
-                user=user,
-                text=text,
-                voice_file=voice_file,
-                chat_id=chat_id,
-                timestamp=int(event.get("timestamp", 0)),
-                extra={"raw": data}
-            )
-
-        except Exception as e:
-            logger.error(f"解析 Webhook 失败: {e}")
-            return None
+        return self.parse_message(data)
 
     def verify_webhook(self, signature: str, timestamp: str, body: bytes) -> bool:
         """
