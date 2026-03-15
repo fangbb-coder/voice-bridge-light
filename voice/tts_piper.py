@@ -78,7 +78,8 @@ class PiperTTS:
         try:
             from piper import PiperVoice
 
-            if not self.is_ready():
+            # 检查模型文件是否存在（不依赖 self.voice，因为它还未定义）
+            if not (self.model_path.exists() and self.json_path.exists()):
                 logger.warning(f"模型文件不存在: {self.model_path}")
                 self.voice = None
                 return
