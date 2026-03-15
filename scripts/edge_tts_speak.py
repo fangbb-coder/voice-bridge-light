@@ -2,6 +2,7 @@
 """
 Voice Bridge Piper TTS 语音合成 - 兼容 Edge TTS 接口
 用于替换原有的 edge-tts 调用
+默认使用中文女声
 """
 
 import sys
@@ -14,7 +15,7 @@ from pathlib import Path
 script_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(script_dir))
 
-from core import tts
+from core import text_to_speech
 
 # 语音名称映射（兼容旧版 edge-tts 名称）
 VOICE_MAP = {
@@ -55,22 +56,27 @@ def main():
         voice_id = "zh_CN"
 
     try:
-        # 调用 Voice Bridge TTS
-        result = tts(args.text, voice=voice_id)
+        # 强制使用中文模型（zh_CN = 中文女声）
+        print(f"使用中文女声合成: {args.text[:30]}...")
+        result = text_to_speech(args.text, voice="zh_CN")
 
-        if result and Path(result).exists():
+        if result.get("success") and result.get("audio_file"):
+            audio_file = result["audio_file"]
             # 复制到指定输出路径
             output_path = Path(args.output)
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(result, output_path)
+            shutil.copy2(audio_file, output_path)
             print(f"语音合成完成: {output_path}")
             return 0
         else:
-            print("错误: 语音合成失败")
+            error_msg = result.get("error", "未知错误")
+            print(f"错误: 语音合成失败 - {error_msg}")
             return 1
 
     except Exception as e:
         print(f"错误: {e}")
+        import traceback
+        traceback.print_exc()
         return 1
 
 
