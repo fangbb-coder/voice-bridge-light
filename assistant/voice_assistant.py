@@ -2,8 +2,8 @@ import datetime
 from typing import Optional, Dict, Any, Callable
 from pathlib import Path
 
-from voice.asr import VoiceASR
-from voice.tts import VoiceTTS
+from voice.asr_whisper import WhisperASR
+from voice.tts_piper import PiperTTS
 from voice.audio_utils import generate_temp_path, cleanup_temp_files
 from config import get_config
 from utils.logger import setup_logger
@@ -14,7 +14,7 @@ logger = setup_logger(__name__)
 class VoiceAssistant:
     """语音助手核心类"""
 
-    def __init__(self, asr: VoiceASR, tts: VoiceTTS):
+    def __init__(self, asr: WhisperASR, tts: PiperTTS):
         """
         初始化语音助手
 
