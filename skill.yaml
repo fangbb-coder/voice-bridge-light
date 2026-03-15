@@ -1,14 +1,14 @@
 name: voice-bridge-pro
 version: 1.0.0
 description: |
-  离线语音助手引擎（轻量版），使用 Whisper + Piper。
+  离线语音助手引擎，使用 Whisper + Piper。
   ASR 语音识别：Whisper base (74MB)
   TTS 语音合成：Piper Neural TTS (25-60MB)
   支持多平台接入：Telegram、企业微信、钉钉、飞书、WhatsApp、QQ。
 author: baobin
 license: MIT
-homepage: https://github.com/fangbb-coder/voice-bridge-pro
-repository: https://github.com/fangbb-coder/voice-bridge-pro
+homepage: https://github.com/fangbb-coder/voice-bridge-light
+repository: https://github.com/fangbb-coder/voice-bridge-light
 
 runtime: python3
 entry: main.py
@@ -282,7 +282,7 @@ health_check:
 
 # 安装脚本
 install: |
-  echo "正在安装 Voice Bridge Pro (轻量版)..."
+  echo "正在安装 Voice Bridge Pro..."
   pip install -r requirements.txt
   echo "安装完成！"
   echo "请运行 'python scripts/download_models.py' 下载模型文件"

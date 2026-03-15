@@ -1,6 +1,6 @@
-# Voice Bridge Pro (轻量版)
+# Voice Bridge Pro
 
-离线语音助手引擎，使用 Whisper + Piper，模型总大小仅 ~160MB。
+离线语音助手引擎，使用 Whisper + Piper，模型总大小约 160MB。
 
 ## 特性
 
@@ -8,22 +8,14 @@
 - 🔊 **语音合成 (TTS)** - Piper Neural TTS (25-60MB)，自然流畅
 - 🤖 **语音助手** - 支持唤醒词、命令处理
 - 💬 **多平台支持** - Telegram、企业微信、钉钉、飞书、WhatsApp、QQ
-- 🚀 **轻量级** - 总模型大小仅 160MB，适合边缘设备
-
-## 模型大小对比
-
-| 组件 | 原方案 (sherpa-onnx) | 轻量版 (Whisper+Piper) |
-|------|---------------------|----------------------|
-| ASR | ~1GB | 74MB (base) |
-| TTS | ~300MB | 25-60MB |
-| **总计** | **~1.3GB** | **~160MB** |
+- 🚀 **轻量级** - 总模型大小约 160MB，适合边缘设备
 
 ## 安装
 
 ```bash
 # 克隆项目
-git clone https://github.com/fangbb-coder/voice-bridge-pro.git
-cd voice-bridge-pro
+git clone https://github.com/fangbb-coder/voice-bridge-light.git
+cd voice-bridge-light
 
 # 安装依赖
 pip install -r requirements.txt
@@ -104,9 +96,9 @@ adapters:
 - 更多...
 
 ### Piper TTS
-- 中文女声 (zh_CN)
-- 英文女声 (en_US)
-- 英文轻量版 (en_US_low, 25MB)
+- 中文女声 (zh_CN) - 60MB
+- 英文女声 (en_US) - 60MB
+- 英文轻量版 (en_US_low) - 25MB
 
 ## 平台支持
 
@@ -124,6 +116,8 @@ voice-bridge-pro/
 ├── main.py                 # FastAPI 入口
 ├── skill.yaml              # ClawHub 配置
 ├── requirements.txt        # 依赖
+├── config.yaml             # 配置文件
+├── test_skill.py           # 测试脚本
 ├── voice/
 │   ├── asr_whisper.py      # Whisper 语音识别
 │   ├── tts_piper.py        # Piper 语音合成
@@ -141,6 +135,11 @@ voice-bridge-pro/
 - piper-tts
 - fastapi
 - uvicorn
+- pydantic
+- pyyaml
+- pydub
+- numpy
+- soundfile
 - torch (可选，用于加速)
 
 ## 许可证
