@@ -31,12 +31,26 @@ class AdapterManager:
     统一管理所有平台的消息接收和发送
     """
 
+    # 回复模式
+    REPLY_MODE = {
+        "text_only": "text_only",           # 仅文本回复
+        "voice_only": "voice_only",         # 仅语音回复
+        "text_and_voice": "text_and_voice", # 文本+语音回复
+        "auto": "auto"                      # 自动（语音消息用语音回复，文本消息用文本回复）
+    }
+
     def __init__(self):
         self.config = get_config()
         self.adapters: Dict[str, Any] = {}
         self.running = False
         self.threads: List[threading.Thread] = []
         self.message_handlers: List[Callable] = []
+
+        # 加载回复配置
+        self.reply_config = getattr(self.config, 'reply', {})
+        self.voice_reply_mode = self.reply_config.get('voice_reply_mode', 'auto')  # 语音消息的回复模式
+        self.text_reply_mode = self.reply_config.get('text_reply_mode', 'text_only')  # 文本消息的回复模式
+        self.include_recognized_text = self.reply_config.get('include_recognized_text', True)  # 是否包含识别文本
 
     def register_adapter(self, name: str, adapter_instance: Any, poll_interval: int = 5):
         """
@@ -108,6 +122,28 @@ class AdapterManager:
 
         logger.info(f"共初始化 {len(self.adapters)} 个适配器")
 
+    def _should_send_text_reply(self, is_voice_message: bool) -> bool:
+        """判断是否发送文本回复"""
+        if is_voice_message:
+            mode = self.voice_reply_mode
+        else:
+            mode = self.text_reply_mode
+
+        return mode in ["text_only", "text_and_voice", "auto"]
+
+    def _should_send_voice_reply(self, is_voice_message: bool) -> bool:
+        """判断是否发送语音回复"""
+        if is_voice_message:
+            mode = self.voice_reply_mode
+        else:
+            mode = self.text_reply_mode
+
+        if mode == "auto":
+            # 自动模式：语音消息用语音回复，文本消息用文本回复
+            return is_voice_message
+        else:
+            return mode in ["voice_only", "text_and_voice"]
+
     def process_message(self, adapter_name: str, message: Any):
         """
         处理收到的消息
@@ -125,16 +161,16 @@ class AdapterManager:
         logger.info(f"[{adapter_name}] 收到消息 from {message.user.name or message.user.id}")
 
         try:
+            adapter = self.adapters[adapter_name]["instance"]
+
             # 处理语音消息
             if message.voice_url or message.voice_file:
                 logger.info(f"[{adapter_name}] 处理语音消息...")
 
                 # 下载语音文件
-                adapter = self.adapters[adapter_name]["instance"]
                 voice_file = message.voice_file
 
                 if not voice_file and message.voice_url:
-                    # 需要下载语音
                     voice_file = adapter.download_voice(message.voice_url)
 
                 if not voice_file:
@@ -151,21 +187,26 @@ class AdapterManager:
                     adapter.send_text(message.chat_id, f"处理失败: {error_msg}")
                     return
 
-                # 发送识别结果
                 recognized_text = result.get("recognized_text", "")
                 reply_text = result.get("reply_text", "")
                 reply_voice = result.get("reply_voice")
 
                 # 发送文本回复
-                if reply_text:
-                    adapter.send_text(
-                        message.chat_id,
-                        f"🎤 识别: {recognized_text}\n🤖 回复: {reply_text}"
-                    )
+                if self._should_send_text_reply(is_voice_message=True) and reply_text:
+                    if self.include_recognized_text:
+                        # 包含识别文本和回复
+                        text_to_send = f"🎤 识别: {recognized_text}\n🤖 回复: {reply_text}"
+                    else:
+                        # 仅回复
+                        text_to_send = reply_text
+                    adapter.send_text(message.chat_id, text_to_send)
 
                 # 发送语音回复
-                if reply_voice and Path(reply_voice).exists():
-                    adapter.send_voice(message.chat_id, reply_voice)
+                if self._should_send_voice_reply(is_voice_message=True):
+                    if reply_voice and Path(reply_voice).exists():
+                        adapter.send_voice(message.chat_id, reply_voice)
+                    else:
+                        logger.warning(f"[{adapter_name}] 语音回复文件不存在")
 
             # 处理文本消息
             elif message.text:
@@ -182,13 +223,13 @@ class AdapterManager:
                 reply_voice = result.get("reply_voice")
 
                 # 发送文本回复
-                if reply_text:
+                if self._should_send_text_reply(is_voice_message=False) and reply_text:
                     adapter.send_text(message.chat_id, reply_text)
 
                 # 发送语音回复
-                if reply_voice and Path(reply_voice).exists():
-                    adapter = self.adapters[adapter_name]["instance"]
-                    adapter.send_voice(message.chat_id, reply_voice)
+                if self._should_send_voice_reply(is_voice_message=False):
+                    if reply_voice and Path(reply_voice).exists():
+                        adapter.send_voice(message.chat_id, reply_voice)
 
         except Exception as e:
             logger.error(f"[{adapter_name}] 处理消息失败: {e}")

@@ -20,6 +20,24 @@ tts:
   pitch: 1.0
   voice: "af"  # af=美式女声, am=美式男声, bf=英式女声, bm=英式男声
 
+# 回复配置
+reply:
+  # 语音消息的回复模式
+  # - auto: 自动（语音消息用语音回复，文本消息用文本回复）
+  # - text_only: 仅文本回复
+  # - voice_only: 仅语音回复
+  # - text_and_voice: 文本+语音回复
+  voice_reply_mode: "auto"
+
+  # 文本消息的回复模式
+  # - text_only: 仅文本回复
+  # - voice_only: 仅语音回复
+  # - text_and_voice: 文本+语音回复
+  text_reply_mode: "text_only"
+
+  # 语音消息回复时是否包含识别文本
+  include_recognized_text: true
+
 # 适配器配置
 adapters:
   telegram:

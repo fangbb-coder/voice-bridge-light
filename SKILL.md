@@ -107,6 +107,24 @@ auto_voice_reply: true
 whisper_model_size: base  # tiny/base/small
 piper_language: zh_CN     # zh_CN/en_US/en_US_low
 
+# 回复配置
+reply:
+  # 语音消息的回复模式
+  # - auto: 自动（语音消息用语音回复，文本消息用文本回复）- 默认
+  # - text_only: 仅文本回复
+  # - voice_only: 仅语音回复
+  # - text_and_voice: 文本+语音回复
+  voice_reply_mode: "auto"
+
+  # 文本消息的回复模式
+  # - text_only: 仅文本回复 - 默认
+  # - voice_only: 仅语音回复
+  # - text_and_voice: 文本+语音回复
+  text_reply_mode: "text_only"
+
+  # 语音消息回复时是否包含识别文本
+  include_recognized_text: true
+
 # 适配器配置（启用需要的平台）
 adapters:
   telegram:
@@ -269,6 +287,8 @@ voice-bridge/
 
 ## 消息处理流程
 
+### 语音消息处理流程
+
 ```
 用户发送语音消息
        │
@@ -292,12 +312,44 @@ voice-bridge/
 │ 生成回复文本  │    │ 语音合成 TTS  │
 └──────┬───────┘    └──────┬───────┘
        │                   │
-       └─────────┬─────────┘
-                 ▼
-        ┌──────────────┐
-        │  发送回复     │
-        │ (文本+语音)   │
-        └──────────────┘
+       │    ┌─────────┐    │
+       └───▶│ 配置决定 │◀───┘
+            │ 回复方式 │
+            └────┬────┘
+                 │
+       ┌─────────┼─────────┐
+       │         │         │
+       ▼         ▼         ▼
+  ┌────────┐ ┌────────┐ ┌────────┐
+  │ 文本回复 │ │ 语音回复 │ │ 两者都发 │
+  │(识别+回复)│ │        │ │        │
+  └────────┘ └────────┘ └────────┘
+```
+
+### 回复模式配置
+
+| 配置项 | 可选值 | 说明 |
+|--------|--------|------|
+| `voice_reply_mode` | `auto` | 语音消息用语音回复（默认） |
+|                  | `text_only` | 仅文本回复 |
+|                  | `voice_only` | 仅语音回复 |
+|                  | `text_and_voice` | 文本+语音回复 |
+| `text_reply_mode` | `text_only` | 仅文本回复（默认） |
+|                 | `voice_only` | 仅语音回复 |
+|                 | `text_and_voice` | 文本+语音回复 |
+| `include_recognized_text` | `true` | 回复包含识别文本（默认） |
+|                         | `false` | 仅回复，不包含识别文本 |
+
+### 配置示例
+
+```yaml
+reply:
+  # 语音消息：用语音回复，同时显示识别文本
+  voice_reply_mode: "auto"
+  include_recognized_text: true
+
+  # 文本消息：仅文本回复
+  text_reply_mode: "text_only"
 ```
 
 ## 许可证
