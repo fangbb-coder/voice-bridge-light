@@ -55,8 +55,16 @@ class PiperTTS:
             language: 语言代码 (zh_CN/en_US/en_US_low)
         """
         self.model_dir = Path(model_dir)
+        
+        # 验证语言代码，确保使用有效的模型
+        if language not in self.MODELS:
+            logger.warning(f"未知的语言代码 '{language}'，使用默认中文女声 zh_CN")
+            language = "zh_CN"
+        
         self.language = language
-        self.model_config = self.MODELS.get(language, self.MODELS["zh_CN"])
+        self.model_config = self.MODELS[language]
+        
+        logger.info(f"PiperTTS 初始化: language={self.language}, model={self.model_config['name']}")
 
         self.model_path = self.model_dir / f"{self.model_config['name']}.onnx"
         self.json_path = self.model_dir / f"{self.model_config['name']}.onnx.json"

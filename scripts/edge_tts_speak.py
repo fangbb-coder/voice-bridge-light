@@ -58,6 +58,13 @@ def main():
     try:
         # 强制使用中文模型（zh_CN = 中文女声）
         print(f"使用中文女声合成: {args.text[:30]}...")
+        print(f"当前工作目录: {os.getcwd()}")
+        print(f"脚本目录: {script_dir}")
+        
+        # 检查模型文件是否存在
+        model_path = script_dir / "models" / "piper" / "zh_CN-huayan-medium.onnx"
+        print(f"检查模型文件: {model_path} - 存在: {model_path.exists()}")
+        
         result = text_to_speech(args.text, voice="zh_CN")
 
         if result.get("success") and result.get("audio_file"):
