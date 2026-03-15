@@ -129,15 +129,31 @@ class PiperTTS:
                 # 合成音频
                 for audio_chunk in self.voice.synthesize(text):
                     # audio_chunk 是 AudioChunk 对象
-                    # 兼容不同版本的 Piper API: 优先使用 audio_int16_bytes，否则使用 raw
+                    # 兼容不同版本的 Piper API
+                    audio_data = None
+                    
                     if hasattr(audio_chunk, 'audio_int16_bytes'):
-                        wav_file.writeframes(audio_chunk.audio_int16_bytes)
+                        # 新版 Piper API
+                        audio_data = audio_chunk.audio_int16_bytes
                     elif hasattr(audio_chunk, 'raw'):
-                        wav_file.writeframes(audio_chunk.raw)
-                    else:
-                        # 如果都没有，尝试直接转换
+                        # 旧版 Piper API
+                        audio_data = audio_chunk.raw
+                    elif hasattr(audio_chunk, 'audio_int16_array'):
+                        # 从 numpy array 转换
                         import numpy as np
-                        wav_file.writeframes(audio_chunk.tobytes() if hasattr(audio_chunk, 'tobytes') else bytes(audio_chunk))
+                        audio_data = audio_chunk.audio_int16_array.tobytes()
+                    elif hasattr(audio_chunk, 'audio_float_array'):
+                        # 从 float array 转换
+                        import numpy as np
+                        float_array = audio_chunk.audio_float_array
+                        int16_array = (float_array * 32767).astype(np.int16)
+                        audio_data = int16_array.tobytes()
+                    else:
+                        # 兜底方案
+                        audio_data = bytes(audio_chunk)
+                    
+                    if audio_data:
+                        wav_file.writeframes(audio_data)
 
             logger.info(f"语音合成完成: {output_file}")
             return output_file
@@ -164,13 +180,25 @@ class PiperTTS:
             # 使用 Piper Python API 流式合成
             for audio_chunk in self.voice.synthesize(text):
                 # 兼容不同版本的 Piper API
+                audio_data = None
+                
                 if hasattr(audio_chunk, 'audio_int16_bytes'):
-                    yield audio_chunk.audio_int16_bytes
+                    audio_data = audio_chunk.audio_int16_bytes
                 elif hasattr(audio_chunk, 'raw'):
-                    yield audio_chunk.raw
-                else:
+                    audio_data = audio_chunk.raw
+                elif hasattr(audio_chunk, 'audio_int16_array'):
                     import numpy as np
-                    yield audio_chunk.tobytes() if hasattr(audio_chunk, 'tobytes') else bytes(audio_chunk)
+                    audio_data = audio_chunk.audio_int16_array.tobytes()
+                elif hasattr(audio_chunk, 'audio_float_array'):
+                    import numpy as np
+                    float_array = audio_chunk.audio_float_array
+                    int16_array = (float_array * 32767).astype(np.int16)
+                    audio_data = int16_array.tobytes()
+                else:
+                    audio_data = bytes(audio_chunk)
+                
+                if audio_data:
+                    yield audio_data
 
         except Exception as e:
             logger.error(f"流式合成失败: {e}")
