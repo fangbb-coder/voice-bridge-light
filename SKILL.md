@@ -40,7 +40,49 @@ print(result["reply_text"])   # 回复文本
 print(result["reply_voice"])  # 回复语音文件
 ```
 
-### 方式 2：启动适配器管理器（自动处理多平台消息）
+### 方式 2：HTTP API 服务（供 OpenClaw 等平台调用）
+
+启动 Flask HTTP 服务：
+
+```bash
+# 默认端口 18790
+python api_server.py
+
+# 自定义端口
+python api_server.py --port 8080
+```
+
+API 端点：
+
+| 端点 | 方法 | 功能 | 参数 |
+|------|------|------|------|
+| `/health` | GET | 健康检查 | - |
+| `/tts` | POST | 文本转语音 | `{"text": "你好", "voice": "zh_CN"}` |
+| `/tts/file` | POST | TTS 返回音频文件 | `text=你好&voice=zh_CN` |
+| `/stt` | POST | 语音转文本 | `audio=file&language=zh` |
+| `/process/text` | POST | 处理文本消息 | `{"text": "你好", "reply_with_voice": true}` |
+| `/process/voice` | POST | 处理语音消息 | `audio=file&language=zh` |
+
+OpenClaw 配置示例：
+
+```json
+{
+  "qqbot": {
+    "stt": {
+      "enabled": true,
+      "provider": "local-whisper",
+      "baseUrl": "http://127.0.0.1:18790"
+    },
+    "tts": {
+      "enabled": true,
+      "provider": "local-piper",
+      "baseUrl": "http://127.0.0.1:18790"
+    }
+  }
+}
+```
+
+### 方式 3：启动适配器管理器（自动处理多平台消息）
 
 ```bash
 # 启动所有适配器（后台持续运行）
@@ -166,8 +208,9 @@ python scripts/download_models.py piper_en
 必需：
 - openai-whisper
 - piper-tts
-- fastapi（仅 HTTP 模式需要）
-- uvicorn（仅 HTTP 模式需要）
+- flask（HTTP API 服务）
+- fastapi（可选，备用 HTTP 框架）
+- uvicorn（可选）
 - pydantic
 - pyyaml
 - pydub
@@ -227,6 +270,7 @@ python test_skill.py
 ```
 voice-bridge/
 ├── core.py                 # 核心功能（纯函数，无 HTTP）
+├── api_server.py           # Flask HTTP API 服务
 ├── start_adapters.py       # 启动适配器管理器
 ├── skill.yaml              # ClawHub 配置
 ├── requirements.txt        # 依赖
