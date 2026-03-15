@@ -51,27 +51,18 @@ print(result["reply_text"])   # 回复文本
 print(result["reply_voice"])  # 回复语音文件
 ```
 
-### 方式 2：HTTP API 服务
-
-如需 HTTP 服务，使用 main.py：
+### 方式 2：启动适配器管理器（自动处理多平台消息）
 
 ```bash
-# 启动服务
-python main.py
-
-# 测试 API
-curl http://localhost:8000/health
-
-# 处理语音
-curl -X POST http://localhost:8000/voice/process \
-  -H "Content-Type: application/json" \
-  -d '{"audio_file": "test.wav", "language": "zh"}'
-
-# 处理文本
-curl -X POST http://localhost:8000/text/process \
-  -H "Content-Type: application/json" \
-  -d '{"text": "你好"}'
+# 启动所有适配器（后台持续运行）
+python start_adapters.py
 ```
+
+适配器管理器功能：
+- 自动轮询所有启用的平台（Telegram/QQ/企业微信/钉钉/飞书/WhatsApp）
+- 收到语音消息：自动下载 → 语音识别 → 生成回复 → 语音合成 → 发送回复
+- 收到文本消息：生成回复 → 语音合成（可选）→ 发送回复
+- 后台持续运行，无需人工干预
 
 ## 配置
 
@@ -150,7 +141,7 @@ python scripts/download_models.py piper_en
 ```
 voice-bridge/
 ├── core.py                 # 核心功能（纯函数，无 HTTP）
-├── main.py                 # HTTP API 服务入口
+├── start_adapters.py       # 启动适配器管理器
 ├── skill.yaml              # ClawHub 配置
 ├── requirements.txt        # 依赖
 ├── config.yaml             # 配置文件
@@ -162,6 +153,9 @@ voice-bridge/
 ├── assistant/
 │   └── voice_assistant.py  # 语音助手逻辑
 ├── adapters/               # 多平台适配器
+│   ├── manager.py          # 适配器管理器
+│   ├── base.py             # 适配器基类
+│   └── *.py                # 各平台适配器
 └── scripts/
     └── download_models.py  # 模型下载
 ```

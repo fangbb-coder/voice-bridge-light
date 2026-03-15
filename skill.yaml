@@ -98,12 +98,6 @@ tools:
       required:
         - audio_file
 
-  - name: health_check
-    description: 健康检查，验证服务状态
-    inputSchema:
-      type: object
-      properties: {}
-
 config:
   # 基础配置
   language:

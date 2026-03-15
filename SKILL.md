@@ -54,44 +54,6 @@ python -c "from adapters.manager import start_adapters; start_adapters()"
 - 收到文本消息：生成回复 → 语音合成（可选）→ 发送回复
 - 后台持续运行，无需人工干预
 
-### 方式 3：HTTP API 服务
-
-如需 HTTP 服务，使用 main.py：
-
-```bash
-# 启动服务
-python main.py
-
-# 测试 API
-curl http://localhost:8000/health
-
-# 处理语音
-curl -X POST http://localhost:8000/voice/process \
-  -H "Content-Type: application/json" \
-  -d '{"audio_file": "path/to/audio.ogg", "language": "zh"}'
-
-# 处理文本
-curl -X POST http://localhost:8000/text/process \
-  -H "Content-Type: application/json" \
-  -d '{"text": "你好", "reply_with_voice": true}'
-
-# 语音识别 (ASR)
-curl -X POST http://localhost:8000/asr \
-  -H "Content-Type: application/json" \
-  -d '{"audio_file": "test.wav", "language": "zh"}'
-
-# 语音合成 (TTS)
-curl -X POST http://localhost:8000/tts \
-  -H "Content-Type: application/json" \
-  -d '{"text": "你好，我是语音助手", "voice": "zh_CN"}'
-```
-
-### Webhook
-
-各平台 Webhook 地址：`POST /webhook/{adapter_name}`
-
-支持的 adapter_name：telegram, wecom, dingtalk, feishu, whatsapp, qq
-
 ## 配置
 
 编辑 `config.yaml`：
