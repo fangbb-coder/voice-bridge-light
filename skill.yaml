@@ -11,7 +11,7 @@ homepage: https://github.com/fangbb-coder/voice-bridge-light
 repository: https://github.com/fangbb-coder/voice-bridge-light
 
 runtime: python3
-entry: main.py
+entry: core.py
 
 permissions:
   - network.receive
@@ -267,18 +267,8 @@ config:
     description: QQ Bot Token
     secret: true
 
-# 端口配置
-ports:
-  - name: http
-    port: 8000
-    protocol: http
-    description: HTTP API 端口
-
-# 健康检查
-health_check:
-  path: /health
-  port: 8000
-  interval: 30
+# 注意：此 Skill 使用纯函数调用，无需 HTTP 端口
+# 如需 HTTP 服务，请使用 main.py 入口
 
 # 安装脚本
 install: |
@@ -292,6 +282,8 @@ install: |
   echo "  - Piper TTS (中文): ~60MB"
   echo "  - Piper TTS (英文): ~25MB"
 
-# 启动脚本
+# 启动脚本 - 初始化核心模块（无 HTTP 服务）
 start: |
-  python main.py
+  python core.py
+  echo "Voice Bridge 核心模块已初始化"
+  echo "可用函数: stt(), tts(), process_voice(), process_text()"

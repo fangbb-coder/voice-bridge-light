@@ -12,24 +12,39 @@
 
 ## 使用方法
 
-### 直接调用
+### 方式 1：纯函数调用（推荐，无 HTTP 服务）
 
 ```python
-from main import handle_voice_message, handle_text_message
+from core import stt, tts, process_voice, process_text
 
-# 处理语音
-result = handle_voice_message("path/to/audio.ogg", language="zh")
-print(result["text"])  # 回复文本
-print(result["voice"])  # 回复语音文件路径
+# 语音识别
+text = stt("audio.wav", language="zh")
+print(text)  # "你好"
 
-# 处理文本
-result = handle_text_message("你好", reply_with_voice=True)
-print(result["text"])
+# 语音合成
+audio_file = tts("你好，我是语音助手", voice="zh_CN")
+print(audio_file)  # "temp/xxx.wav"
+
+# 处理语音消息
+result = process_voice("audio.wav")
+print(result["recognized_text"])  # 识别的文本
+print(result["reply_text"])       # 回复文本
+print(result["reply_voice"])      # 回复语音文件
+
+# 处理文本消息
+result = process_text("你好")
+print(result["reply_text"])   # 回复文本
+print(result["reply_voice"])  # 回复语音文件
 ```
 
-### HTTP API
+### 方式 2：HTTP API 服务
+
+如需 HTTP 服务，使用 main.py：
 
 ```bash
+# 启动服务
+python main.py
+
 # 健康检查
 curl http://localhost:8000/health
 
@@ -124,17 +139,16 @@ python scripts/download_models.py piper_en
 
 必需：
 - openai-whisper
-- fastapi
-- uvicorn
+- piper-tts
+- fastapi（仅 HTTP 模式需要）
+- uvicorn（仅 HTTP 模式需要）
 - pydantic
-- requests
 - pyyaml
 - pydub
 - numpy
 - soundfile
 
 可选：
-- piper-tts（用于语音合成功能）
 - torch（用于加速 Whisper）
 
 ## 部署测试
@@ -151,7 +165,8 @@ python test_skill.py
 
 ```
 voice-bridge/
-├── main.py                 # FastAPI 入口
+├── core.py                 # 核心功能（纯函数，无 HTTP）
+├── main.py                 # HTTP API 服务入口
 ├── skill.yaml              # ClawHub 配置
 ├── requirements.txt        # 依赖
 ├── config.yaml             # 配置文件

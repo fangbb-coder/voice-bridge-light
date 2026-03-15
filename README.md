@@ -24,7 +24,36 @@ pip install -r requirements.txt
 python scripts/download_models.py
 ```
 
-## 快速开始
+## 使用方式
+
+### 方式 1：纯函数调用（推荐，无 HTTP 服务）
+
+```python
+from core import stt, tts, process_voice, process_text
+
+# 语音识别
+result = stt("audio.wav", language="zh")
+print(result)  # "你好"
+
+# 语音合成
+audio_file = tts("你好，我是语音助手", voice="zh_CN")
+print(audio_file)  # "temp/xxx.wav"
+
+# 处理语音消息
+result = process_voice("audio.wav")
+print(result["recognized_text"])  # 识别的文本
+print(result["reply_text"])       # 回复文本
+print(result["reply_voice"])      # 回复语音文件
+
+# 处理文本消息
+result = process_text("你好")
+print(result["reply_text"])   # 回复文本
+print(result["reply_voice"])  # 回复语音文件
+```
+
+### 方式 2：HTTP API 服务
+
+如需 HTTP 服务，使用 main.py：
 
 ```bash
 # 启动服务
@@ -32,36 +61,16 @@ python main.py
 
 # 测试 API
 curl http://localhost:8000/health
-```
 
-## API 接口
-
-### 处理语音
-```bash
+# 处理语音
 curl -X POST http://localhost:8000/voice/process \
   -H "Content-Type: application/json" \
   -d '{"audio_file": "test.wav", "language": "zh"}'
-```
 
-### 处理文本
-```bash
+# 处理文本
 curl -X POST http://localhost:8000/text/process \
   -H "Content-Type: application/json" \
   -d '{"text": "你好"}'
-```
-
-### 语音合成
-```bash
-curl -X POST http://localhost:8000/tts \
-  -H "Content-Type: application/json" \
-  -d '{"text": "你好，我是语音助手", "voice": "zh_CN"}'
-```
-
-### 语音识别
-```bash
-curl -X POST http://localhost:8000/asr \
-  -H "Content-Type: application/json" \
-  -d '{"audio_file": "test.wav", "language": "zh"}'
 ```
 
 ## 配置
@@ -86,6 +95,21 @@ adapters:
     token: "YOUR_BOT_TOKEN"
 ```
 
+## 模型下载
+
+```bash
+# 下载全部模型（约 160MB）
+python scripts/download_models.py all
+
+# 仅下载中文 TTS（60MB）
+python scripts/download_models.py piper_zh
+
+# 仅下载英文 TTS（25MB）
+python scripts/download_models.py piper_en
+
+# Whisper 首次使用时自动下载（74MB）
+```
+
 ## 支持的语言
 
 ### Whisper ASR
@@ -100,20 +124,33 @@ adapters:
 - 英文女声 (en_US) - 60MB
 - 英文轻量版 (en_US_low) - 25MB
 
-## 平台支持
+## 命令
 
-- ✅ Telegram
-- ✅ 企业微信 (WeCom)
-- ✅ 钉钉 (DingTalk)
-- ✅ 飞书 (Feishu)
-- ✅ WhatsApp
-- ✅ QQ
+- `你好` / `hello` - 打招呼
+- `时间` / `time` - 查询当前时间
+- `日期` / `date` - 查询今天日期
+- `帮助` / `help` - 显示帮助信息
+- 说唤醒词 `hey claw` - 唤醒助手
+
+## 依赖
+
+- openai-whisper
+- piper-tts
+- fastapi（仅 HTTP 模式需要）
+- uvicorn（仅 HTTP 模式需要）
+- pydantic
+- pyyaml
+- pydub
+- numpy
+- soundfile
+- torch（可选，用于加速）
 
 ## 项目结构
 
 ```
 voice-bridge/
-├── main.py                 # FastAPI 入口
+├── core.py                 # 核心功能（纯函数，无 HTTP）
+├── main.py                 # HTTP API 服务入口
 ├── skill.yaml              # ClawHub 配置
 ├── requirements.txt        # 依赖
 ├── config.yaml             # 配置文件
@@ -128,19 +165,6 @@ voice-bridge/
 └── scripts/
     └── download_models.py  # 模型下载
 ```
-
-## 依赖
-
-- openai-whisper
-- piper-tts
-- fastapi
-- uvicorn
-- pydantic
-- pyyaml
-- pydub
-- numpy
-- soundfile
-- torch (可选，用于加速)
 
 ## 许可证
 
