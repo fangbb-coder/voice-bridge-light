@@ -8,7 +8,8 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from flask import Flask, request, jsonify, send_file
+from typing import Optional
+from flask import Flask, request, jsonify, send_file, Form
 
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent))
@@ -49,13 +50,17 @@ def tts_endpoint():
     文本转语音
     
     JSON 参数:
-    - text: 要合成的文本
-    - voice: 语音类型 (zh_CN/en_US/en_US_low)
+    - text: 要合成的文本（必填）
+    - voice: 语音类型，默认中文女声 (zh_CN/en_US/en_US_low)
+    
+    示例:
+    {"text": "你好，我是语音助手"}
+    {"text": "Hello", "voice": "en_US"}
     """
     try:
         data = request.get_json() or {}
         text = data.get('text', '')
-        voice = data.get('voice', 'zh_CN')
+        voice = data.get('voice')  # 默认 None，会使用配置中的中文女声
         
         if not text:
             return jsonify({"success": False, "error": "文本不能为空"}), 400
@@ -73,12 +78,12 @@ def tts_file_endpoint():
     文本转语音，直接返回音频文件
     
     Form 参数:
-    - text: 要合成的文本
-    - voice: 语音类型
+    - text: 要合成的文本（必填）
+    - voice: 语音类型，默认中文女声 (zh_CN/en_US/en_US_low)
     """
     try:
         text = request.form.get('text', '')
-        voice = request.form.get('voice', 'zh_CN')
+        voice = request.form.get('voice')  # 默认 None，使用配置中的中文女声
         
         if not text:
             return jsonify({"success": False, "error": "文本不能为空"}), 400

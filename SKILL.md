@@ -67,12 +67,14 @@ API 端点：
 | 端点 | 方法 | 功能 | 参数 |
 |------|------|------|------|
 | `/health` | GET | 健康检查 | - |
-| `/tts` | POST | 文本转语音 | `{"text": "你好", "voice": "zh_CN"}` |
-| `/tts/file` | POST | TTS 返回音频文件 | `text=你好&voice=zh_CN` |
+| `/tts` | POST | 文本转语音（默认中文女声） | `{"text": "你好"}` 或 `{"text": "Hello", "voice": "en_US"}` |
+| `/tts/file` | POST | TTS 返回音频文件 | `text=你好` 或 `text=Hello&voice=en_US` |
 | `/stt` | POST | 语音转文本 | `audio=file&language=zh` |
 | `/audio/transcriptions` | POST | **OpenAI 兼容**语音转文本 | `file=audio.wav&language=zh` |
 | `/process/text` | POST | 处理文本消息 | `{"text": "你好", "reply_with_voice": true}` |
 | `/process/voice` | POST | 处理语音消息 | `audio=file&language=zh` |
+
+**注意**：TTS 默认使用 **中文女声** (`zh_CN`)，语速适中。如需英文，请指定 `voice: "en_US"`。
 
 **OpenClaw HTTP 配置示例**（仅当无法使用纯函数调用时）：
 

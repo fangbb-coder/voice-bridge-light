@@ -135,7 +135,7 @@ def text_to_speech(text: str, voice: Optional[str] = None) -> Dict[str, Any]:
 
     Args:
         text: 要合成的文本
-        voice: 音色 (zh_CN/en_US/en_US_low)
+        voice: 音色 (zh_CN/en_US/en_US_low)，默认使用配置中的中文女声
 
     Returns:
         {"success": True, "audio_file": "音频文件路径"} 或 {"success": False, "error": "错误信息"}
@@ -147,8 +147,16 @@ def text_to_speech(text: str, voice: Optional[str] = None) -> Dict[str, Any]:
         return {"success": False, "error": "TTS 未初始化"}
 
     try:
+        # 如果没有指定音色，使用配置中的默认音色（中文女声）
+        if voice is None:
+            # 从配置中获取默认语言，如果配置中没有则使用 zh_CN
+            voice = 'zh_CN'
+            if hasattr(core_state.config, 'tts') and hasattr(core_state.config.tts, 'language'):
+                voice = core_state.config.tts.language
+            logger.debug(f"使用默认 TTS 音色: {voice}")
+
         # 如果需要切换音色
-        if voice and voice != core_state.tts.language:
+        if voice != core_state.tts.language:
             logger.info(f"切换 TTS 音色: {voice}")
             core_state.tts = PiperTTS(language=voice)
 

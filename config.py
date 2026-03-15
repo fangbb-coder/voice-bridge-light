@@ -16,13 +16,15 @@ logger = setup_logger(__name__)
 @dataclass
 class TTSConfig:
     """TTS 配置"""
-    speed: float = 1.0
-    pitch: float = 1.0
-    voice: str = "af"  # 默认女声
+    language: str = "zh_CN"  # 默认中文女声
+    speed: float = 1.0       # 语速：1.0=正常
+    pitch: float = 1.0       # 音调：1.0=正常
+    voice: str = "af"        # 兼容性保留
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TTSConfig":
         return cls(
+            language=data.get("language", "zh_CN"),
             speed=data.get("speed", 1.0),
             pitch=data.get("pitch", 1.0),
             voice=data.get("voice", "af")

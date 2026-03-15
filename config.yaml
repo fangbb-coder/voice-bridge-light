@@ -16,9 +16,12 @@ max_temp_files: 100
 
 # TTS 配置
 tts:
+  # 默认使用中文女声
+  language: "zh_CN"  # zh_CN=中文女声, en_US=英文女声, en_US_low=英文轻量版
+  # 语速控制 (0.5=慢速, 1.0=正常, 1.5=快速)
   speed: 1.0
+  # 音调控制 (0.8=低音, 1.0=正常, 1.2=高音)
   pitch: 1.0
-  voice: "af"  # af=美式女声, am=美式男声, bf=英式女声, bm=英式男声
 
 # 回复配置
 reply:
