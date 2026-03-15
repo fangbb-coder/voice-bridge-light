@@ -63,11 +63,11 @@ class PiperTTS:
         self._check_piper_install()
 
     def _check_piper_install(self) -> bool:
-        """检查 piper 是否已安装"""
+        """检查 piper-tts 是否已安装"""
         try:
-            subprocess.run(["piper", "--version"], capture_output=True, check=True)
+            import piper
             return True
-        except (subprocess.CalledProcessError, FileNotFoundError):
+        except ImportError:
             logger.warning("Piper TTS 未安装，请运行: pip install piper-tts")
             return False
 

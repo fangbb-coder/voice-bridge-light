@@ -21,7 +21,7 @@ MODELS = {
         "install_cmd": "whisper --model base --help"
     },
     "piper_zh": {
-        "name": "piper-zh_CN-huayan-medium",
+        "name": "zh_CN-huayan-medium",
         "description": "Piper 中文女声 TTS (60MB)",
         "url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx",
         "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx.json",
@@ -29,7 +29,7 @@ MODELS = {
         "extract_dir": "models/piper"
     },
     "piper_en": {
-        "name": "piper-en_US-lessac-low",
+        "name": "en_US-lessac-low",
         "description": "Piper 英文女声 TTS (25MB)",
         "url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/low/en_US-lessac-low.onnx",
         "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/low/en_US-lessac-low.onnx.json",
