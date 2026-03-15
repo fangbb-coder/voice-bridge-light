@@ -89,10 +89,14 @@ class WhisperASR:
                 return None
 
             # 转录音频
+            # 使用 initial_prompt 提示模型输出简体中文
+            initial_prompt = "以下是普通话的句子。" if language == "zh" else None
+
             result = self.model.transcribe(
                 str(audio_file),
                 language=language,
-                fp16=False  # CPU 运行禁用 fp16
+                fp16=False,  # CPU 运行禁用 fp16
+                initial_prompt=initial_prompt
             )
 
             text = result.get("text", "").strip()
@@ -119,11 +123,15 @@ class WhisperASR:
             return []
 
         try:
+            # 使用 initial_prompt 提示模型输出简体中文
+            initial_prompt = "以下是普通话的句子。" if language == "zh" else None
+
             result = self.model.transcribe(
                 str(audio_file),
                 language=language,
                 fp16=False,
-                verbose=False
+                verbose=False,
+                initial_prompt=initial_prompt
             )
 
             segments = result.get("segments", [])

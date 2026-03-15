@@ -152,8 +152,9 @@ def cleanup_temp_files(temp_dir: str = "temp", max_files: int = 100) -> int:
         if not temp_path.exists():
             return 0
 
+        # 只获取文件（排除子目录），按修改时间排序
         files = sorted(
-            temp_path.iterdir(),
+            [f for f in temp_path.iterdir() if f.is_file()],
             key=lambda f: f.stat().st_mtime,
             reverse=True
         )
