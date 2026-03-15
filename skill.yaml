@@ -11,7 +11,7 @@ homepage: https://github.com/fangbb-coder/voice-bridge-light
 repository: https://github.com/fangbb-coder/voice-bridge-light
 
 runtime: python3
-entry: core.py
+entry: main.py
 
 permissions:
   - network.receive
@@ -279,10 +279,4 @@ install: |
 # 启动脚本 - 启动适配器管理器（后台轮询所有平台消息）
 start: |
   echo "启动 Voice Bridge 适配器管理器..."
-  nohup python -c "
-from adapters.manager import start_adapters
-start_adapters()
-" > /tmp/voice-bridge.log 2>&1 &
-  echo $! > /tmp/voice-bridge.pid
-  echo "Voice Bridge 适配器已后台启动"
-  echo "日志: tail -f /tmp/voice-bridge.log"
+  python start_adapters.py

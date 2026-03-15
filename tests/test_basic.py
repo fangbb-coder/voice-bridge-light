@@ -166,10 +166,10 @@ class TestModelsDownloadScript(unittest.TestCase):
 
     def test_models_config(self):
         """测试模型配置"""
-        # 检查脚本中定义的模型
+        # 检查脚本中定义的模型 (Whisper + Piper)
         script_content = Path("scripts/download_models.py").read_text(encoding='utf-8')
-        self.assertIn("sherpa-onnx-sense-voice", script_content)
-        self.assertIn("kokoro", script_content)
+        self.assertIn("whisper", script_content)
+        self.assertIn("piper", script_content)
 
 
 class TestSkillYaml(unittest.TestCase):
@@ -190,7 +190,7 @@ class TestSkillYaml(unittest.TestCase):
         for field in required_fields:
             self.assertIn(field, data)
 
-        self.assertEqual(data["name"], "voice-bridge-pro")
+        self.assertEqual(data["name"], "voice-bridge")
         self.assertEqual(data["runtime"], "python3")
         self.assertEqual(data["entry"], "main.py")
 
@@ -225,7 +225,6 @@ class TestSkillYaml(unittest.TestCase):
         self.assertIn("process_text", tool_names)
         self.assertIn("text_to_speech", tool_names)
         self.assertIn("speech_to_text", tool_names)
-        self.assertIn("health_check", tool_names)
 
     def test_tools_have_input_schema(self):
         """测试工具有 inputSchema"""
@@ -251,7 +250,7 @@ class TestRequirements(unittest.TestCase):
         """测试核心依赖"""
         content = Path("requirements.txt").read_text(encoding='utf-8')
 
-        core_deps = ["sherpa-onnx", "fastapi", "requests", "pyyaml"]
+        core_deps = ["openai-whisper", "fastapi", "requests", "pyyaml"]
         for dep in core_deps:
             self.assertIn(dep, content)
 

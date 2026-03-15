@@ -128,8 +128,16 @@ class PiperTTS:
 
                 # 合成音频
                 for audio_chunk in self.voice.synthesize(text):
-                    # audio_chunk 是 AudioChunk 对象，使用 audio_int16_bytes 获取 PCM 数据
-                    wav_file.writeframes(audio_chunk.audio_int16_bytes)
+                    # audio_chunk 是 AudioChunk 对象
+                    # 兼容不同版本的 Piper API: 优先使用 audio_int16_bytes，否则使用 raw
+                    if hasattr(audio_chunk, 'audio_int16_bytes'):
+                        wav_file.writeframes(audio_chunk.audio_int16_bytes)
+                    elif hasattr(audio_chunk, 'raw'):
+                        wav_file.writeframes(audio_chunk.raw)
+                    else:
+                        # 如果都没有，尝试直接转换
+                        import numpy as np
+                        wav_file.writeframes(audio_chunk.tobytes() if hasattr(audio_chunk, 'tobytes') else bytes(audio_chunk))
 
             logger.info(f"语音合成完成: {output_file}")
             return output_file
@@ -155,7 +163,14 @@ class PiperTTS:
         try:
             # 使用 Piper Python API 流式合成
             for audio_chunk in self.voice.synthesize(text):
-                yield audio_chunk.audio_int16_bytes
+                # 兼容不同版本的 Piper API
+                if hasattr(audio_chunk, 'audio_int16_bytes'):
+                    yield audio_chunk.audio_int16_bytes
+                elif hasattr(audio_chunk, 'raw'):
+                    yield audio_chunk.raw
+                else:
+                    import numpy as np
+                    yield audio_chunk.tobytes() if hasattr(audio_chunk, 'tobytes') else bytes(audio_chunk)
 
         except Exception as e:
             logger.error(f"流式合成失败: {e}")
