@@ -1,7 +1,12 @@
-# Voice Bridge Pro - 依赖列表
+# Voice Bridge Pro - 依赖列表（轻量版）
 
-# 核心依赖
-sherpa-onnx>=1.10.0
+# 语音识别 (Whisper)
+openai-whisper>=20231117
+
+# 语音合成 (Piper)
+piper-tts>=1.2.0
+
+# 音频处理
 numpy>=1.24.0
 soundfile>=0.12.0
 pydub>=0.25.0
@@ -19,3 +24,6 @@ pyyaml>=6.0.1
 
 # 工具库
 python-multipart>=0.0.6
+
+# 可选：用于加速 Whisper
+torch>=2.0.0

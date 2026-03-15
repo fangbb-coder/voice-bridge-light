@@ -1,45 +1,148 @@
-# Voice Bridge Pro
+# Voice Bridge Pro (轻量版)
 
-Offline Voice Engine for OpenClaw.
+离线语音助手引擎，使用 Whisper + Piper，模型总大小仅 ~160MB。
 
-## Features
+## 特性
 
-- Offline Speech Recognition (ASR)
-- Offline Text to Speech (TTS)
-- Voice Assistant
-- Wake Word Detection
-- Chinese / English / Cantonese
-- Messaging platform integration
+- 🎤 **语音识别 (ASR)** - Whisper base (74MB)，支持多语言
+- 🔊 **语音合成 (TTS)** - Piper Neural TTS (25-60MB)，自然流畅
+- 🤖 **语音助手** - 支持唤醒词、命令处理
+- 💬 **多平台支持** - Telegram、企业微信、钉钉、飞书、WhatsApp、QQ
+- 🚀 **轻量级** - 总模型大小仅 160MB，适合边缘设备
 
-## Install
+## 模型大小对比
+
+| 组件 | 原方案 (sherpa-onnx) | 轻量版 (Whisper+Piper) |
+|------|---------------------|----------------------|
+| ASR | ~1GB | 74MB (base) |
+| TTS | ~300MB | 25-60MB |
+| **总计** | **~1.3GB** | **~160MB** |
+
+## 安装
 
 ```bash
-openclaw skills install voice-bridge-pro
+# 克隆项目
+git clone https://github.com/fangbb-coder/voice-bridge-pro.git
+cd voice-bridge-pro
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 下载模型
+python scripts/download_models.py
 ```
 
-## Models
-
-Models are downloaded automatically with:
+## 快速开始
 
 ```bash
-bash install.sh
+# 启动服务
+python main.py
+
+# 测试 API
+curl http://localhost:8000/health
 ```
 
-## Supported Platforms
+## API 接口
 
-- Feishu
-- DingTalk
-- WeCom
-- Telegram
-- WhatsApp
-- QQ
+### 处理语音
+```bash
+curl -X POST http://localhost:8000/voice/process \
+  -H "Content-Type: application/json" \
+  -d '{"audio_file": "test.wav", "language": "zh"}'
+```
 
-## Example
+### 处理文本
+```bash
+curl -X POST http://localhost:8000/text/process \
+  -H "Content-Type: application/json" \
+  -d '{"text": "你好"}'
+```
 
-User sends voice:
+### 语音合成
+```bash
+curl -X POST http://localhost:8000/tts \
+  -H "Content-Type: application/json" \
+  -d '{"text": "你好，我是语音助手", "voice": "zh_CN"}'
+```
 
-🎤 "Hello"
+### 语音识别
+```bash
+curl -X POST http://localhost:8000/asr \
+  -H "Content-Type: application/json" \
+  -d '{"audio_file": "test.wav", "language": "zh"}'
+```
 
-Assistant replies:
+## 配置
 
-🔊 Voice message
+编辑 `config.yaml`：
+
+```yaml
+language: zh
+wake_word: "hey claw"
+auto_voice_reply: true
+
+# Whisper 配置
+whisper_model_size: base  # tiny/base/small
+
+# Piper 配置
+piper_language: zh_CN  # zh_CN/en_US/en_US_low
+
+# 启用适配器
+adapters:
+  telegram:
+    enabled: true
+    token: "YOUR_BOT_TOKEN"
+```
+
+## 支持的语言
+
+### Whisper ASR
+- 中文 (zh)
+- 英文 (en)
+- 日语 (ja)
+- 韩语 (ko)
+- 更多...
+
+### Piper TTS
+- 中文女声 (zh_CN)
+- 英文女声 (en_US)
+- 英文轻量版 (en_US_low, 25MB)
+
+## 平台支持
+
+- ✅ Telegram
+- ✅ 企业微信 (WeCom)
+- ✅ 钉钉 (DingTalk)
+- ✅ 飞书 (Feishu)
+- ✅ WhatsApp
+- ✅ QQ
+
+## 项目结构
+
+```
+voice-bridge-pro/
+├── main.py                 # FastAPI 入口
+├── skill.yaml              # ClawHub 配置
+├── requirements.txt        # 依赖
+├── voice/
+│   ├── asr_whisper.py      # Whisper 语音识别
+│   ├── tts_piper.py        # Piper 语音合成
+│   └── audio_utils.py      # 音频处理
+├── assistant/
+│   └── voice_assistant.py  # 语音助手逻辑
+├── adapters/               # 多平台适配器
+└── scripts/
+    └── download_models.py  # 模型下载
+```
+
+## 依赖
+
+- openai-whisper
+- piper-tts
+- fastapi
+- uvicorn
+- torch (可选，用于加速)
+
+## 许可证
+
+MIT

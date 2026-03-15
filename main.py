@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Voice Bridge Pro - 离线语音助手引擎
+Voice Bridge Pro - 离线语音助手引擎（轻量版）
+使用 Whisper + Piper，模型总大小约 160MB
 支持多平台适配器：Telegram、企业微信、钉钉、飞书、WhatsApp、QQ
 """
 
@@ -21,8 +22,8 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from config import get_config, reload_config
-from voice.asr import VoiceASR
-from voice.tts import VoiceTTS
+from voice.asr_whisper import WhisperASR
+from voice.tts_piper import PiperTTS
 from voice.audio_utils import convert_to_wav, cleanup_temp_files
 from assistant.voice_assistant import VoiceAssistant
 from adapters import get_adapter, list_adapters, BaseAdapter
@@ -35,8 +36,8 @@ class AppState:
     """应用状态管理"""
     def __init__(self):
         self.config = None
-        self.asr: Optional[VoiceASR] = None
-        self.tts: Optional[VoiceTTS] = None
+        self.asr: Optional[WhisperASR] = None
+        self.tts: Optional[PiperTTS] = None
         self.assistant: Optional[VoiceAssistant] = None
         self.adapters: Dict[str, BaseAdapter] = {}
         self.initialized = False
@@ -49,7 +50,7 @@ class AppState:
                 return
 
             logger.info("=" * 50)
-            logger.info("初始化 Voice Bridge Pro")
+            logger.info("初始化 Voice Bridge Pro (轻量版)")
             logger.info("=" * 50)
 
             # 加载配置
@@ -57,28 +58,40 @@ class AppState:
             logger.info(f"语言: {self.config.language}")
             logger.info(f"唤醒词: {self.config.wake_word}")
 
-            # 初始化 ASR
+            # 设置 Whisper 缓存目录
+            whisper_cache = Path("models/whisper")
+            whisper_cache.mkdir(parents=True, exist_ok=True)
+            os.environ["WHISPER_CACHE_DIR"] = str(whisper_cache)
+
+            # 初始化 ASR (Whisper)
             try:
-                logger.info(f"初始化 ASR 模型: {self.config.asr_model_dir}")
-                self.asr = VoiceASR(self.config.asr_model_dir)
-                logger.info("ASR 初始化成功")
+                logger.info("初始化 Whisper ASR (base, 74MB)")
+                self.asr = WhisperASR(model_size="base")
+                if self.asr.is_ready():
+                    logger.info("ASR 初始化成功")
+                else:
+                    logger.warning("ASR 将在首次使用时加载模型")
             except Exception as e:
                 logger.error(f"ASR 初始化失败: {e}")
-                raise
+                logger.info("请确保已安装: pip install openai-whisper")
 
-            # 初始化 TTS
+            # 初始化 TTS (Piper)
             try:
-                logger.info(f"初始化 TTS 模型: {self.config.tts_model_dir}")
-                voice = "af" if self.config.voice == "female" else "am"
-                self.tts = VoiceTTS(self.config.tts_model_dir, voice=voice)
-                logger.info("TTS 初始化成功")
+                language = "zh_CN" if self.config.language == "zh" else "en_US"
+                logger.info(f"初始化 Piper TTS ({language})")
+                self.tts = PiperTTS(language=language)
+                if self.tts.is_ready():
+                    logger.info("TTS 初始化成功")
+                else:
+                    logger.warning(f"TTS 模型未找到，请运行: python scripts/download_models.py")
             except Exception as e:
                 logger.error(f"TTS 初始化失败: {e}")
-                raise
+                logger.info("请确保已安装: pip install piper-tts")
 
             # 初始化助手
-            self.assistant = VoiceAssistant(self.asr, self.tts)
-            logger.info("语音助手初始化成功")
+            if self.asr and self.tts:
+                self.assistant = VoiceAssistant(self.asr, self.tts)
+                logger.info("语音助手初始化成功")
 
             # 初始化适配器
             self._init_adapters()
@@ -98,370 +111,280 @@ class AppState:
                 config_dict = {
                     "token": adapter_config.token,
                     "webhook_secret": adapter_config.webhook_secret,
-                    "app_id": adapter_config.app_id,
-                    "app_secret": adapter_config.app_secret,
-                    "extra": adapter_config.extra
+                    "api_key": adapter_config.api_key,
+                    "api_secret": adapter_config.api_secret,
+                    "base_url": adapter_config.base_url
                 }
 
                 adapter = get_adapter(name, config_dict)
-                self.adapters[name] = adapter
-                logger.info(f"适配器初始化成功: {name}")
+                if adapter:
+                    self.adapters[name] = adapter
+                    logger.info(f"适配器 {name} 初始化成功")
 
             except Exception as e:
-                logger.error(f"适配器初始化失败 {name}: {e}")
+                logger.error(f"适配器 {name} 初始化失败: {e}")
 
-    def shutdown(self):
-        """关闭应用"""
-        with self.lock:
-            logger.info("正在关闭应用...")
-            self.initialized = False
-            cleanup_temp_files(self.config.temp_dir if self.config else "temp", max_files=0)
-            logger.info("应用已关闭")
-
+    def get_status(self) -> dict:
+        """获取状态信息"""
+        return {
+            "initialized": self.initialized,
+            "asr_ready": self.asr.is_ready() if self.asr else False,
+            "tts_ready": self.tts.is_ready() if self.tts else False,
+            "adapters": list(self.adapters.keys()),
+            "language": self.config.language if self.config else None
+        }
 
 # 全局状态实例
 app_state = AppState()
 
-
-# ========== 请求模型 ==========
-class VoiceMessageRequest(BaseModel):
-    """语音消息请求"""
+# ========== 数据模型 ==========
+class VoiceProcessRequest(BaseModel):
     audio_file: str
-    adapter: Optional[str] = None
-    chat_id: Optional[str] = None
+    language: Optional[str] = None
 
-
-class TextMessageRequest(BaseModel):
-    """文本消息请求"""
+class TextProcessRequest(BaseModel):
     text: str
-    adapter: Optional[str] = None
-    chat_id: Optional[str] = None
+    reply_with_voice: bool = True
 
+class TextToSpeechRequest(BaseModel):
+    text: str
+    voice: Optional[str] = None
 
 class WebhookRequest(BaseModel):
-    """Webhook 请求"""
     adapter: str
-    data: Dict[str, Any]
+    payload: Dict[str, Any]
 
+# ========== 业务逻辑 ==========
+def handle_voice_message(audio_file: str, language: Optional[str] = None) -> dict:
+    """
+    处理语音消息
+
+    Args:
+        audio_file: 音频文件路径
+        language: 语言代码
+
+    Returns:
+        处理结果
+    """
+    if not app_state.initialized:
+        app_state.init()
+
+    try:
+        # 验证文件
+        from voice.audio_utils import validate_audio_file
+        is_valid, error = validate_audio_file(audio_file)
+        if not is_valid:
+            return {"success": False, "error": error}
+
+        # 转换为 wav
+        wav_file = convert_to_wav(audio_file)
+        if not wav_file:
+            return {"success": False, "error": "音频转换失败"}
+
+        # 识别语音
+        lang = language or app_state.config.language
+        text = app_state.asr.transcribe(wav_file, language=lang)
+
+        if not text:
+            return {"success": False, "error": "语音识别失败"}
+
+        # 生成回复
+        reply_text = app_state.assistant.generate_reply(text)
+
+        # 合成语音回复
+        reply_voice = None
+        if app_state.config.auto_voice_reply:
+            reply_voice = app_state.tts.synthesize(reply_text)
+
+        # 清理临时文件
+        cleanup_temp_files(app_state.config.max_temp_files)
+
+        return {
+            "success": True,
+            "recognized_text": text,
+            "reply_text": reply_text,
+            "reply_voice": reply_voice
+        }
+
+    except Exception as e:
+        logger.error(f"处理语音消息失败: {e}")
+        return {"success": False, "error": str(e)}
+
+def handle_text_message(text: str, reply_with_voice: bool = True) -> dict:
+    """
+    处理文本消息
+
+    Args:
+        text: 文本消息
+        reply_with_voice: 是否用语音回复
+
+    Returns:
+        处理结果
+    """
+    if not app_state.initialized:
+        app_state.init()
+
+    try:
+        # 生成回复
+        reply_text = app_state.assistant.generate_reply(text)
+
+        # 合成语音
+        reply_voice = None
+        if reply_with_voice and app_state.config.auto_voice_reply:
+            reply_voice = app_state.tts.synthesize(reply_text)
+
+        return {
+            "success": True,
+            "reply_text": reply_text,
+            "reply_voice": reply_voice
+        }
+
+    except Exception as e:
+        logger.error(f"处理文本消息失败: {e}")
+        return {"success": False, "error": str(e)}
 
 # ========== FastAPI 应用 ==========
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
+    # 启动时初始化
     app_state.init()
     yield
-    app_state.shutdown()
-
+    # 关闭时清理
+    logger.info("应用关闭")
 
 app = FastAPI(
     title="Voice Bridge Pro",
-    description="离线语音助手引擎 - 支持多平台",
+    description="离线语音助手引擎（轻量版：Whisper + Piper）",
     version="1.0.0",
     lifespan=lifespan
 )
 
-
-# ========== API 端点 ==========
-@app.get("/")
-async def root():
-    """根路径"""
-    return {
-        "name": "Voice Bridge Pro",
-        "version": "1.0.0",
-        "status": "running" if app_state.initialized else "initializing"
-    }
-
-
 @app.get("/health")
 async def health_check():
     """健康检查"""
-    if not app_state.initialized:
-        raise HTTPException(status_code=503, detail="Service not ready")
-
+    status = app_state.get_status()
     return {
-        "status": "healthy",
-        "asr_ready": app_state.asr.is_ready() if app_state.asr else False,
-        "tts_ready": app_state.tts.is_ready() if app_state.tts else False,
-        "adapters": list(app_state.adapters.keys())
+        "status": "healthy" if status["initialized"] else "initializing",
+        **status
     }
 
+@app.get("/models")
+async def get_models_info():
+    """获取模型信息"""
+    info = {
+        "asr": app_state.asr.get_model_info() if app_state.asr else None,
+        "tts": app_state.tts.get_model_info() if app_state.tts else None
+    }
+    return info
 
 @app.post("/voice/process")
-async def process_voice(request: VoiceMessageRequest):
-    """
-    处理语音消息
-
-    - 转换音频格式
-    - 语音识别
-    - 生成回复
-    - 语音合成
-    """
-    if not app_state.initialized:
-        raise HTTPException(status_code=503, detail="Service not ready")
-
-    try:
-        # 检查文件
-        audio_path = Path(request.audio_file)
-        if not audio_path.exists():
-            raise HTTPException(status_code=400, detail=f"音频文件不存在: {request.audio_file}")
-
-        # 转换为 WAV
-        from voice.audio_utils import generate_temp_path
-        wav_path = generate_temp_path(app_state.config.temp_dir, suffix=".wav")
-        convert_to_wav(str(audio_path), wav_path)
-
-        # 语音识别
-        text = app_state.asr.transcribe(wav_path)
-        if not text:
-            return JSONResponse({
-                "success": False,
-                "error": "语音识别失败",
-                "text": None,
-                "voice": None
-            })
-
-        # 处理消息
-        result = app_state.assistant.process(text)
-
-        # 如果指定了适配器和 chat_id，发送回复
-        if request.adapter and request.chat_id and result:
-            adapter = app_state.adapters.get(request.adapter)
-            if adapter:
-                if result.get("voice"):
-                    adapter.send_voice(request.chat_id, result["voice"])
-                else:
-                    adapter.send_text(request.chat_id, result["text"])
-
-        return JSONResponse({
-            "success": True,
-            "text": result.get("text") if result else None,
-            "voice": result.get("voice") if result else None,
-            "recognized_text": text
-        })
-
-    except Exception as e:
-        logger.error(f"处理语音消息失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
+async def process_voice(request: VoiceProcessRequest):
+    """处理语音"""
+    result = handle_voice_message(request.audio_file, request.language)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
 
 @app.post("/text/process")
-async def process_text(request: TextMessageRequest):
-    """处理文本消息"""
-    if not app_state.initialized:
-        raise HTTPException(status_code=503, detail="Service not ready")
+async def process_text(request: TextProcessRequest):
+    """处理文本"""
+    result = handle_text_message(request.text, request.reply_with_voice)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
 
-    try:
-        result = app_state.assistant.process(request.text)
+@app.post("/tts")
+async def text_to_speech(request: TextToSpeechRequest):
+    """文本转语音"""
+    if not app_state.tts:
+        raise HTTPException(status_code=503, detail="TTS 未初始化")
 
-        # 如果指定了适配器和 chat_id，发送回复
-        if request.adapter and request.chat_id and result:
-            adapter = app_state.adapters.get(request.adapter)
-            if adapter:
-                if result.get("voice"):
-                    adapter.send_voice(request.chat_id, result["voice"])
-                else:
-                    adapter.send_text(request.chat_id, result["text"])
+    voice_file = app_state.tts.synthesize(request.text)
+    if not voice_file:
+        raise HTTPException(status_code=500, detail="语音合成失败")
 
-        return JSONResponse({
-            "success": True,
-            "text": result.get("text") if result else None,
-            "voice": result.get("voice") if result else None
-        })
+    return {"success": True, "voice_file": voice_file}
 
-    except Exception as e:
-        logger.error(f"处理文本消息失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@app.post("/asr")
+async def speech_to_text(request: VoiceProcessRequest):
+    """语音转文本"""
+    if not app_state.asr:
+        raise HTTPException(status_code=503, detail="ASR 未初始化")
 
+    # 转换为 wav
+    wav_file = convert_to_wav(request.audio_file)
+    if not wav_file:
+        raise HTTPException(status_code=400, detail="音频转换失败")
 
-@app.post("/webhook/{adapter_name}")
-async def webhook(adapter_name: str, request: Request):
-    """
-    接收 Webhook 消息
+    # 识别
+    text = app_state.asr.transcribe(wav_file, request.language)
+    if not text:
+        raise HTTPException(status_code=500, detail="语音识别失败")
 
-    各平台 Webhook 入口
-    """
-    if not app_state.initialized:
-        raise HTTPException(status_code=503, detail="Service not ready")
-
-    adapter = app_state.adapters.get(adapter_name)
-    if not adapter:
-        raise HTTPException(status_code=404, detail=f"适配器未找到: {adapter_name}")
-
-    try:
-        # 解析请求体
-        body = await request.body()
-        data = json.loads(body)
-
-        # 验证签名 (如果配置了)
-        # 各平台签名验证逻辑不同，这里简化处理
-
-        # 解析消息
-        message = adapter.parse_webhook(data)
-        if not message:
-            return JSONResponse({"success": True, "message": "No message to process"})
-
-        logger.info(f"收到 {adapter_name} 消息: {message.user.id}")
-
-        # 处理消息
-        if adapter.is_voice_message(message) and message.voice_file:
-            # 下载语音
-            voice_path = adapter.download_voice(message.voice_file)
-            if voice_path:
-                # 转换为 WAV
-                from voice.audio_utils import generate_temp_path
-                wav_path = generate_temp_path(app_state.config.temp_dir, suffix=".wav")
-                convert_to_wav(voice_path, wav_path)
-
-                # 语音识别
-                text = app_state.asr.transcribe(wav_path)
-                if text:
-                    result = app_state.assistant.process(text)
-                else:
-                    result = {"text": "抱歉，我没能听清您说的话。", "voice": None}
-            else:
-                result = {"text": "抱歉，下载语音文件失败。", "voice": None}
-        else:
-            # 文本消息
-            result = app_state.assistant.process(message.text)
-
-        # 发送回复
-        if result:
-            if result.get("voice"):
-                adapter.send_voice(message.chat_id, result["voice"])
-            else:
-                adapter.send_text(message.chat_id, result["text"])
-
-        return JSONResponse({"success": True})
-
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
-    except Exception as e:
-        logger.error(f"Webhook 处理失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
+    return {"success": True, "text": text}
 
 @app.get("/adapters")
-async def list_available_adapters():
-    """列出可用适配器"""
+async def get_adapters():
+    """获取适配器列表"""
     return {
         "available": list_adapters(),
         "enabled": list(app_state.adapters.keys())
     }
 
-
-@app.post("/reload")
-async def reload():
-    """重新加载配置"""
-    try:
-        reload_config()
-        app_state.shutdown()
-        app_state.init()
-        return {"success": True, "message": "配置已重新加载"}
-    except Exception as e:
-        logger.error(f"重新加载配置失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ========== 直接调用接口 (供 ClawHub 使用) ==========
-def handle_voice_message(audio_file: str, adapter: str = None, chat_id: str = None) -> dict:
-    """
-    处理语音消息 (同步接口)
-
-    Args:
-        audio_file: 音频文件路径
-        adapter: 适配器名称 (可选)
-        chat_id: 聊天 ID (可选)
-
-    Returns:
-        处理结果
-    """
-    if not app_state.initialized:
-        app_state.init()
+@app.post("/webhook/{adapter_name}")
+async def webhook(adapter_name: str, request: Request):
+    """接收适配器 Webhook"""
+    if adapter_name not in app_state.adapters:
+        raise HTTPException(status_code=404, detail=f"适配器 {adapter_name} 未启用")
 
     try:
-        audio_path = Path(audio_file)
-        if not audio_path.exists():
-            return {"success": False, "error": f"音频文件不存在: {audio_file}"}
+        payload = await request.json()
+    except:
+        payload = {}
 
-        # 转换为 WAV
-        from voice.audio_utils import generate_temp_path
-        wav_path = generate_temp_path(app_state.config.temp_dir, suffix=".wav")
-        convert_to_wav(str(audio_path), wav_path)
+    adapter = app_state.adapters[adapter_name]
 
-        # 语音识别
-        text = app_state.asr.transcribe(wav_path)
-        if not text:
-            return {"success": False, "error": "语音识别失败"}
+    try:
+        # 解析消息
+        message = adapter.parse_webhook(payload)
+        if not message:
+            return {"success": False, "error": "无法解析消息"}
 
         # 处理消息
-        result = app_state.assistant.process(text)
+        if message.voice_url:
+            # 下载语音文件
+            voice_file = adapter.download_voice(message.voice_url)
+            result = handle_voice_message(voice_file)
+        else:
+            result = handle_text_message(message.text)
 
         # 发送回复
-        if adapter and chat_id and result:
-            adapter_obj = app_state.adapters.get(adapter)
-            if adapter_obj:
-                if result.get("voice"):
-                    adapter_obj.send_voice(chat_id, result["voice"])
-                else:
-                    adapter_obj.send_text(chat_id, result["text"])
+        if result["success"]:
+            adapter.send_message(
+                chat_id=message.chat_id,
+                text=result["reply_text"],
+                voice_file=result.get("reply_voice")
+            )
 
-        return {
-            "success": True,
-            "text": result.get("text") if result else None,
-            "voice": result.get("voice") if result else None,
-            "recognized_text": text
-        }
+        return {"success": True}
 
     except Exception as e:
-        logger.error(f"处理语音消息失败: {e}")
-        return {"success": False, "error": str(e)}
-
-
-def handle_text_message(text: str, adapter: str = None, chat_id: str = None) -> dict:
-    """
-    处理文本消息 (同步接口)
-
-    Args:
-        text: 文本内容
-        adapter: 适配器名称 (可选)
-        chat_id: 聊天 ID (可选)
-
-    Returns:
-        处理结果
-    """
-    if not app_state.initialized:
-        app_state.init()
-
-    try:
-        result = app_state.assistant.process(text)
-
-        # 发送回复
-        if adapter and chat_id and result:
-            adapter_obj = app_state.adapters.get(adapter)
-            if adapter_obj:
-                if result.get("voice"):
-                    adapter_obj.send_voice(chat_id, result["voice"])
-                else:
-                    adapter_obj.send_text(chat_id, result["text"])
-
-        return {
-            "success": True,
-            "text": result.get("text") if result else None,
-            "voice": result.get("voice") if result else None
-        }
-
-    except Exception as e:
-        logger.error(f"处理文本消息失败: {e}")
-        return {"success": False, "error": str(e)}
-
+        logger.error(f"Webhook 处理失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ========== 主入口 ==========
 if __name__ == "__main__":
     import uvicorn
 
-    # 获取端口
-    port = int(os.environ.get("PORT", 8000))
-    host = os.environ.get("HOST", "0.0.0.0")
+    # 获取配置
+    config = get_config()
 
-    logger.info(f"启动服务: {host}:{port}")
-    uvicorn.run(app, host=host, port=port)
+    # 启动服务
+    uvicorn.run(
+        "main:app",
+        host=config.host,
+        port=config.port,
+        reload=False,
+        log_level="info"
+    )
