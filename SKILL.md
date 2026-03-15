@@ -15,17 +15,9 @@
 
 ## 使用方法
 
-> **💡 OpenClaw 集成建议**
-> 
-> **推荐：纯函数调用**（性能更好、更简单）
-> ```python
-> from core import text_to_speech, speech_to_text, process_text
-> result = text_to_speech("你好")
-> ```
-> 
-> **备选：HTTP API**（仅当 OpenClaw 无法直接调用 Python 函数时使用）
+提供三种使用方式：纯函数调用、HTTP API 服务、适配器管理器。
 
-### 方式 1：纯函数调用（⭐ 推荐，无 HTTP 服务）
+### 方式 1：纯函数调用（无 HTTP 服务）
 
 ```python
 from core import stt, tts, process_voice, process_text
@@ -50,7 +42,7 @@ print(result["reply_text"])   # 回复文本
 print(result["reply_voice"])  # 回复语音文件
 ```
 
-### 方式 2：HTTP API 服务（备选，供无法直接调用 Python 函数的场景）
+### 方式 2：HTTP API 服务
 
 启动 Flask HTTP 服务：
 
@@ -74,9 +66,9 @@ API 端点：
 | `/process/text` | POST | 处理文本消息 | `{"text": "你好", "reply_with_voice": true}` |
 | `/process/voice` | POST | 处理语音消息 | `audio=file&language=zh` |
 
-**注意**：TTS 默认使用 **中文女声** (`zh_CN`)，语速适中。如需英文，请指定 `voice: "en_US"`。
+**说明**：TTS 默认使用 **中文女声** (`zh_CN`)，语速适中。使用英文请指定 `voice: "en_US"`。
 
-**OpenClaw HTTP 配置示例**（仅当无法使用纯函数调用时）：
+**OpenClaw HTTP 配置示例**：
 
 ```json
 {
@@ -94,8 +86,6 @@ API 端点：
   }
 }
 ```
-
-**注意**：如果 OpenClaw 支持直接调用 Python 函数，建议优先使用方式 1（纯函数调用），避免 HTTP 服务的网络开销和进程管理复杂度。
 
 ### 方式 3：启动适配器管理器（自动处理多平台消息）
 
@@ -270,15 +260,13 @@ python scripts/edge_tts_speak.py "你好" -o output.wav -v xiaoxiao
 # 支持语音映射：xiaoxiao → zh_CN, en → en_US
 ```
 
-## 部署测试
+## 测试
 
-运行测试脚本验证安装：
+运行测试：
 
 ```bash
-python test_skill.py
+python -m pytest tests/ -v
 ```
-
-预期输出：8/8 测试通过
 
 ## 项目结构
 
@@ -290,7 +278,6 @@ voice-bridge/
 ├── skill.yaml              # ClawHub 配置
 ├── requirements.txt        # 依赖
 ├── config.yaml             # 配置文件
-├── test_skill.py           # 测试脚本
 ├── voice/
 │   ├── asr_whisper.py      # Whisper 语音识别（支持繁体转简体）
 │   ├── tts_piper.py        # Piper 语音合成
