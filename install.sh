@@ -1,19 +1,20 @@
 #!/bin/bash
 
-echo "Installing Voice Bridge Pro..."
+echo "Installing Voice Bridge..."
 
-mkdir -p models
-cd models
+# 创建模型目录
+mkdir -p models/whisper
+mkdir -p models/piper
 
-echo "Downloading ASR model..."
-wget -q https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17.tar.bz2
-tar -xjf sherpa-onnx-sense-voice-*.tar.bz2
-
-echo "Downloading TTS model..."
-wget -q https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2
-tar -xjf kokoro-multi-lang-v1_0.tar.bz2
+echo "Voice Bridge uses Whisper and Piper models."
+echo "Whisper model will be downloaded automatically on first use."
+echo "Please run 'python scripts/download_models.py' to download Piper TTS models."
 
 echo "Installing dependencies..."
-pip install -r ../requirements.txt
+pip install -r requirements.txt
 
 echo "Installation complete."
+echo ""
+echo "Next steps:"
+echo "1. Run 'python scripts/download_models.py' to download TTS models"
+echo "2. Run 'python main.py' to start the server"

@@ -1,4 +1,4 @@
-# Voice Bridge Pro
+# Voice Bridge
 
 离线语音助手引擎，使用 Whisper + Piper，模型总大小约 160MB。
 
@@ -150,7 +150,7 @@ python test_skill.py
 ## 项目结构
 
 ```
-voice-bridge-pro/
+voice-bridge/
 ├── main.py                 # FastAPI 入口
 ├── skill.yaml              # ClawHub 配置
 ├── requirements.txt        # 依赖

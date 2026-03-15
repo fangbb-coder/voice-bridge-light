@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Voice Bridge Pro - 离线语音助手引擎（轻量版）
+Voice Bridge - 离线语音助手引擎
 使用 Whisper + Piper，模型总大小约 160MB
 支持多平台适配器：Telegram、企业微信、钉钉、飞书、WhatsApp、QQ
 """
@@ -50,7 +50,7 @@ class AppState:
                 return
 
             logger.info("=" * 50)
-            logger.info("初始化 Voice Bridge Pro (轻量版)")
+            logger.info("初始化 Voice Bridge")
             logger.info("=" * 50)
 
             # 加载配置
@@ -254,8 +254,8 @@ async def lifespan(app: FastAPI):
     logger.info("应用关闭")
 
 app = FastAPI(
-    title="Voice Bridge Pro",
-    description="离线语音助手引擎（轻量版：Whisper + Piper）",
+    title="Voice Bridge",
+    description="离线语音助手引擎（Whisper + Piper）",
     version="1.0.0",
     lifespan=lifespan
 )

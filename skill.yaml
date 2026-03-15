@@ -1,4 +1,4 @@
-name: voice-bridge-pro
+name: voice-bridge
 version: 1.0.0
 description: |
   离线语音助手引擎，使用 Whisper + Piper。
@@ -282,7 +282,7 @@ health_check:
 
 # 安装脚本
 install: |
-  echo "正在安装 Voice Bridge Pro..."
+  echo "正在安装 Voice Bridge..."
   pip install -r requirements.txt
   echo "安装完成！"
   echo "请运行 'python scripts/download_models.py' 下载模型文件"

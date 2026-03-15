@@ -1,4 +1,4 @@
-# Voice Bridge Pro 配置文件
+# Voice Bridge 配置文件
 
 # 基础配置
 language: zh
@@ -7,8 +7,8 @@ wake_word: "hey claw"
 auto_voice_reply: true
 
 # 模型路径
-asr_model_dir: "models/sherpa-onnx-sense-voice"
-tts_model_dir: "models/kokoro"
+asr_model_dir: "models/whisper"
+tts_model_dir: "models/piper"
 
 # 临时文件
 temp_dir: "temp"

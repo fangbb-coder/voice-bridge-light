@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Voice Bridge Pro - 部署前测试脚本
+Voice Bridge - 部署前测试脚本
 验证代码语法、导入和基本功能
 """
 
@@ -296,7 +296,7 @@ def test_requirements():
 def main():
     """运行所有测试"""
     print("\n" + "=" * 60)
-    print("Voice Bridge Pro - 部署前测试")
+    print("Voice Bridge - 部署前测试")
     print("=" * 60)
     
     results = []

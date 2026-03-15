@@ -1,4 +1,4 @@
-# Voice Bridge Pro - 依赖列表（轻量版）
+# Voice Bridge - 依赖列表
 
 # 语音识别 (Whisper)
 openai-whisper>=20231117
