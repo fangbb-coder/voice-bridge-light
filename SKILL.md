@@ -4,12 +4,14 @@
 
 ## 特性
 
-- 🎤 **语音识别 (ASR)** - Whisper base (74MB)，支持多语言
+- 🎤 **语音识别 (ASR)** - Whisper base (74MB)，支持多语言，自动繁体转简体
 - 🔊 **语音合成 (TTS)** - Piper Neural TTS (25-60MB)，自然流畅
 - 🤖 **语音助手** - 支持唤醒词、命令处理
 - 💬 **多平台支持** - Telegram、企业微信、钉钉、飞书、WhatsApp、QQ
 - 🚀 **轻量级** - 总模型大小约 160MB，适合边缘设备
 - ⚡ **自动处理** - 后台持续运行，自动接收和回复消息
+- 🔧 **systemd 服务** - 支持开机自启和自动重启
+- 🔄 **兼容接口** - 提供 Edge TTS 兼容脚本，便于迁移
 
 ## 使用方法
 
@@ -181,7 +183,41 @@ python scripts/download_models.py piper_en
 - requests
 
 可选：
-- torch（用于加速 Whisper）
+- opencc-python-reimplemented - 繁体转简体（中文识别更准确）
+- torch - 加速 Whisper 推理
+
+## systemd 服务部署
+
+Linux 系统可配置为 systemd 服务，实现开机自启：
+
+```bash
+# 复制服务文件
+sudo cp scripts/voice-bridge.service /etc/systemd/system/
+
+# 编辑工作目录和用户名
+sudo systemctl edit voice-bridge.service
+# 修改 WorkingDirectory 和 User
+
+# 启用并启动服务
+sudo systemctl daemon-reload
+sudo systemctl enable voice-bridge
+sudo systemctl start voice-bridge
+
+# 查看状态
+sudo systemctl status voice-bridge
+```
+
+## Edge TTS 兼容
+
+如需兼容原有 Edge TTS 调用，使用提供的适配脚本：
+
+```bash
+# 原 edge-tts 调用方式
+python edge_tts_speak.py "你好" -o output.wav -v xiaoxiao
+
+# 实际调用 Voice Bridge Piper
+# 支持语音映射：xiaoxiao → zh_CN, en → en_US
+```
 
 ## 部署测试
 
@@ -204,7 +240,7 @@ voice-bridge/
 ├── config.yaml             # 配置文件
 ├── test_skill.py           # 测试脚本
 ├── voice/
-│   ├── asr_whisper.py      # Whisper 语音识别
+│   ├── asr_whisper.py      # Whisper 语音识别（支持繁体转简体）
 │   ├── tts_piper.py        # Piper 语音合成
 │   └── audio_utils.py      # 音频处理
 ├── assistant/
@@ -219,7 +255,9 @@ voice-bridge/
 │   ├── feishu.py
 │   └── whatsapp.py
 └── scripts/
-    └── download_models.py  # 模型下载
+    ├── download_models.py  # 模型下载
+    ├── voice-bridge.service # systemd 服务配置
+    └── edge_tts_speak.py   # Edge TTS 兼容脚本
 ```
 
 ## 适配器管理器架构
