@@ -100,6 +100,16 @@ class WhisperASR:
             )
 
             text = result.get("text", "").strip()
+
+            # 繁体转简体（如果安装了 opencc）
+            if language == "zh":
+                try:
+                    import opencc
+                    converter = opencc.OpenCC('t2s')
+                    text = converter.convert(text)
+                except ImportError:
+                    pass  # 未安装 opencc，保持原样
+
             logger.info(f"识别结果: {text}")
 
             return text
@@ -135,6 +145,17 @@ class WhisperASR:
             )
 
             segments = result.get("segments", [])
+
+            # 繁体转简体（如果安装了 opencc）
+            if language == "zh":
+                try:
+                    import opencc
+                    converter = opencc.OpenCC('t2s')
+                    for seg in segments:
+                        seg["text"] = converter.convert(seg["text"])
+                except ImportError:
+                    pass  # 未安装 opencc，保持原样
+
             return [
                 {
                     "start": seg["start"],

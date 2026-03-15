@@ -27,3 +27,6 @@ python-multipart>=0.0.6
 
 # 可选：用于加速 Whisper
 torch>=2.0.0
+
+# 可选：繁体转简体
+opencc-python-reimplemented>=0.1.7
