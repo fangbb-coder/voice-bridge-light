@@ -200,7 +200,7 @@ def test_syntax_check():
     import py_compile
     
     files_to_check = [
-        "main.py",
+        "core.py",
         "config.py",
         "voice/asr_whisper.py",
         "voice/tts_piper.py",
@@ -208,6 +208,7 @@ def test_syntax_check():
         "assistant/voice_assistant.py",
         "adapters/__init__.py",
         "adapters/base.py",
+        "adapters/manager.py",
         "utils/logger.py",
     ]
     
