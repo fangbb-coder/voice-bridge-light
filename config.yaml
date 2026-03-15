@@ -1,0 +1,70 @@
+# Voice Bridge Pro 配置文件
+
+# 基础配置
+language: zh
+voice: female
+wake_word: "hey claw"
+auto_voice_reply: true
+
+# 模型路径
+asr_model_dir: "models/sherpa-onnx-sense-voice"
+tts_model_dir: "models/kokoro"
+
+# 临时文件
+temp_dir: "temp"
+max_temp_files: 100
+
+# TTS 配置
+tts:
+  speed: 1.0
+  pitch: 1.0
+  voice: "af"  # af=美式女声, am=美式男声, bf=英式女声, bm=英式男声
+
+# 适配器配置
+adapters:
+  telegram:
+    enabled: false
+    token: "YOUR_BOT_TOKEN"
+    webhook_secret: null
+    extra: {}
+
+  wecom:
+    enabled: false
+    token: null
+    webhook_secret: "YOUR_WEBHOOK_TOKEN"
+    app_id: "YOUR_CORP_ID"
+    app_secret: "YOUR_CORP_SECRET"
+    extra: {}
+
+  dingtalk:
+    enabled: false
+    token: null
+    webhook_secret: "YOUR_WEBHOOK_SECRET"
+    app_id: "YOUR_APP_KEY"
+    app_secret: "YOUR_APP_SECRET"
+    extra: {}
+
+  feishu:
+    enabled: false
+    token: null
+    webhook_secret: "YOUR_ENCRYPT_KEY"
+    app_id: "YOUR_APP_ID"
+    app_secret: "YOUR_APP_SECRET"
+    extra: {}
+
+  whatsapp:
+    enabled: false
+    token: "YOUR_ACCESS_TOKEN"
+    webhook_secret: "YOUR_APP_SECRET"
+    app_id: null
+    app_secret: null
+    extra:
+      phone_number_id: "YOUR_PHONE_NUMBER_ID"
+
+  qq:
+    enabled: false
+    token: "YOUR_BOT_TOKEN"
+    webhook_secret: "YOUR_SECRET"
+    app_id: "YOUR_APP_ID"
+    app_secret: null
+    extra: {}

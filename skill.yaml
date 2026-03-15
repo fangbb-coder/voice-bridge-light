@@ -1,0 +1,298 @@
+name: voice-bridge-pro
+version: 1.0.0
+description: |
+  离线语音助手引擎，支持 ASR 语音识别、TTS 语音合成、语音唤醒。
+  支持多平台接入：Telegram、企业微信、钉钉、飞书、WhatsApp、QQ。
+author: baobin
+license: MIT
+homepage: https://github.com/baobin/voice-bridge-pro
+repository: https://github.com/baobin/voice-bridge-pro
+
+runtime: python3
+entry: main.py
+
+permissions:
+  - network.receive
+  - network.send
+  - file.read
+  - file.write
+  - process.spawn
+
+tags:
+  - voice
+  - speech
+  - asr
+  - tts
+  - ai
+  - assistant
+  - telegram
+  - wecom
+  - dingtalk
+  - feishu
+  - whatsapp
+  - qq
+
+# 工具定义 - OpenClaw 通过 tools 调用 Skill 功能
+tools:
+  - name: process_voice
+    description: 处理语音消息，进行语音识别并生成回复
+    inputSchema:
+      type: object
+      properties:
+        audio_file:
+          type: string
+          description: 音频文件路径（支持 wav, mp3, ogg, m4a 格式）
+      required:
+        - audio_file
+
+  - name: process_text
+    description: 处理文本消息并生成回复
+    inputSchema:
+      type: object
+      properties:
+        text:
+          type: string
+          description: 用户输入的文本消息
+      required:
+        - text
+
+  - name: text_to_speech
+    description: 将文本转换为语音
+    inputSchema:
+      type: object
+      properties:
+        text:
+          type: string
+          description: 要转换为语音的文本
+        voice:
+          type: string
+          description: 音色选择 (af, am, bf, bm)
+          default: af
+        speed:
+          type: number
+          description: 语速 (0.5-2.0)
+          default: 1.0
+      required:
+        - text
+
+  - name: speech_to_text
+    description: 将语音转换为文本
+    inputSchema:
+      type: object
+      properties:
+        audio_file:
+          type: string
+          description: 音频文件路径
+      required:
+        - audio_file
+
+  - name: health_check
+    description: 健康检查，验证服务状态
+    inputSchema:
+      type: object
+      properties: {}
+
+config:
+  # 基础配置
+  language:
+    type: string
+    default: zh
+    description: 语言设置 (zh/en)
+    enum: [zh, en]
+
+  voice:
+    type: string
+    default: female
+    description: 默认音色
+    enum: [female, male]
+
+  wake_word:
+    type: string
+    default: "hey claw"
+    description: 语音唤醒词
+
+  auto_voice_reply:
+    type: boolean
+    default: true
+    description: 是否自动语音回复
+
+  # 模型路径
+  asr_model_dir:
+    type: string
+    default: "models/sherpa-onnx-sense-voice"
+    description: ASR 模型目录
+
+  tts_model_dir:
+    type: string
+    default: "models/kokoro"
+    description: TTS 模型目录
+
+  # 临时文件
+  temp_dir:
+    type: string
+    default: "temp"
+    description: 临时文件目录
+
+  max_temp_files:
+    type: number
+    default: 100
+    description: 最大保留临时文件数
+
+  # TTS 配置
+  tts_speed:
+    type: number
+    default: 1.0
+    description: 语速 (0.5-2.0)
+    min: 0.5
+    max: 2.0
+
+  tts_pitch:
+    type: number
+    default: 1.0
+    description: 音调 (0.5-2.0)
+    min: 0.5
+    max: 2.0
+
+  tts_voice:
+    type: string
+    default: "af"
+    description: TTS 音色代码
+    enum: [af, am, bf, bm]
+
+  # 适配器配置 - Telegram
+  telegram_enabled:
+    type: boolean
+    default: false
+    description: 启用 Telegram 适配器
+
+  telegram_token:
+    type: string
+    default: ""
+    description: Telegram Bot Token
+    secret: true
+
+  # 适配器配置 - 企业微信
+  wecom_enabled:
+    type: boolean
+    default: false
+    description: 启用企业微信适配器
+
+  wecom_corp_id:
+    type: string
+    default: ""
+    description: 企业微信 CorpID
+
+  wecom_corp_secret:
+    type: string
+    default: ""
+    description: 企业微信 CorpSecret
+    secret: true
+
+  wecom_token:
+    type: string
+    default: ""
+    description: 企业微信 Webhook Token
+
+  # 适配器配置 - 钉钉
+  dingtalk_enabled:
+    type: boolean
+    default: false
+    description: 启用钉钉适配器
+
+  dingtalk_app_key:
+    type: string
+    default: ""
+    description: 钉钉 AppKey
+
+  dingtalk_app_secret:
+    type: string
+    default: ""
+    description: 钉钉 AppSecret
+    secret: true
+
+  dingtalk_webhook_secret:
+    type: string
+    default: ""
+    description: 钉钉 Webhook Secret
+    secret: true
+
+  # 适配器配置 - 飞书
+  feishu_enabled:
+    type: boolean
+    default: false
+    description: 启用飞书适配器
+
+  feishu_app_id:
+    type: string
+    default: ""
+    description: 飞书 App ID
+
+  feishu_app_secret:
+    type: string
+    default: ""
+    description: 飞书 App Secret
+    secret: true
+
+  feishu_encrypt_key:
+    type: string
+    default: ""
+    description: 飞书 Encrypt Key
+    secret: true
+
+  # 适配器配置 - WhatsApp
+  whatsapp_enabled:
+    type: boolean
+    default: false
+    description: 启用 WhatsApp 适配器
+
+  whatsapp_access_token:
+    type: string
+    default: ""
+    description: WhatsApp Access Token
+    secret: true
+
+  whatsapp_phone_number_id:
+    type: string
+    default: ""
+    description: WhatsApp Phone Number ID
+
+  # 适配器配置 - QQ
+  qq_enabled:
+    type: boolean
+    default: false
+    description: 启用 QQ 适配器
+
+  qq_app_id:
+    type: string
+    default: ""
+    description: QQ App ID
+
+  qq_token:
+    type: string
+    default: ""
+    description: QQ Bot Token
+    secret: true
+
+# 端口配置
+ports:
+  - name: http
+    port: 8000
+    protocol: http
+    description: HTTP API 端口
+
+# 健康检查
+health_check:
+  path: /health
+  port: 8000
+  interval: 30
+
+# 安装脚本
+install: |
+  echo "正在安装 Voice Bridge Pro..."
+  pip install -r requirements.txt
+  echo "安装完成！"
+  echo "请运行 'python scripts/download_models.py' 下载模型文件"
+
+# 启动脚本
+start: |
+  python main.py
