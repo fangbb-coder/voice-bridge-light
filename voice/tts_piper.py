@@ -4,8 +4,9 @@ Piper TTS 语音合成模块 - 轻量级离线 Neural TTS
 """
 
 import os
-import subprocess
 import tempfile
+import wave
+import io
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -61,6 +62,7 @@ class PiperTTS:
         self.json_path = self.model_dir / f"{self.model_config['name']}.onnx.json"
 
         self._check_piper_install()
+        self._load_voice()
 
     def _check_piper_install(self) -> bool:
         """检查 piper-tts 是否已安装"""
@@ -71,9 +73,27 @@ class PiperTTS:
             logger.warning("Piper TTS 未安装，请运行: pip install piper-tts")
             return False
 
+    def _load_voice(self):
+        """加载 Piper 语音模型"""
+        try:
+            from piper import PiperVoice
+
+            if not self.is_ready():
+                logger.warning(f"模型文件不存在: {self.model_path}")
+                self.voice = None
+                return
+
+            # 加载模型
+            self.voice = PiperVoice.load(str(self.model_path), str(self.json_path))
+            logger.info(f"Piper 语音模型加载成功: {self.model_config['name']}")
+
+        except Exception as e:
+            logger.error(f"加载 Piper 语音模型失败: {e}")
+            self.voice = None
+
     def is_ready(self) -> bool:
         """检查是否可用"""
-        return self.model_path.exists() and self.json_path.exists()
+        return self.model_path.exists() and self.json_path.exists() and self.voice is not None
 
     def synthesize(self, text: str, output_file: Optional[str] = None) -> Optional[str]:
         """
@@ -99,24 +119,15 @@ class PiperTTS:
             output_path = Path(output_file)
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # 构建 piper 命令
-            cmd = [
-                "piper",
-                "--model", str(self.model_path),
-                "--config", str(self.json_path),
-                "--output_file", str(output_file)
-            ]
+            # 使用 Piper Python API 合成
+            with wave.open(output_file, "wb") as wav_file:
+                wav_file.setnchannels(1)  # 单声道
+                wav_file.setsampwidth(2)  # 16-bit
+                wav_file.setframerate(22050)  # 采样率
 
-            # 运行 piper
-            process = subprocess.run(
-                cmd,
-                input=text.encode('utf-8'),
-                capture_output=True
-            )
-
-            if process.returncode != 0:
-                logger.error(f"Piper 合成失败: {process.stderr.decode()}")
-                return None
+                # 合成音频
+                for audio_bytes in self.voice.synthesize_stream_raw(text):
+                    wav_file.writeframes(audio_bytes)
 
             logger.info(f"语音合成完成: {output_file}")
             return output_file
@@ -140,33 +151,9 @@ class PiperTTS:
             return
 
         try:
-            cmd = [
-                "piper",
-                "--model", str(self.model_path),
-                "--config", str(self.json_path),
-                "--output_file", "-"  # 输出到 stdout
-            ]
-
-            process = subprocess.Popen(
-                cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-
-            # 发送文本
-            process.stdin.write(text.encode('utf-8'))
-            process.stdin.close()
-
-            # 读取音频数据
-            chunk_size = 4096
-            while True:
-                chunk = process.stdout.read(chunk_size)
-                if not chunk:
-                    break
-                yield chunk
-
-            process.wait()
+            # 使用 Piper Python API 流式合成
+            for audio_bytes in self.voice.synthesize_stream_raw(text):
+                yield audio_bytes
 
         except Exception as e:
             logger.error(f"流式合成失败: {e}")
